@@ -30,6 +30,46 @@ export function useCreateLink() {
   );
 }
 
+/** Mutation: update the original URL of a link. */
+export function useUpdateLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, originalUrl }: { id: string; originalUrl: string }) => {
+      // Mock API call
+      console.log(`Updating link ${id} with new URL: ${originalUrl}`);
+      return { id, originalUrl };
+    },
+    onSuccess: () => {
+      toast.success("Link updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+    onError: () => {
+      toast.error("Failed to update link");
+    },
+  });
+}
+
+/** Mutation: update status of a link (e.g., active, blocked). */
+export function useUpdateLinkStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      // Mock API call
+      console.log(`Updating status for link ${id} to: ${status}`);
+      return { id, status };
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Link ${variables.status === "blocked" ? "blocked" : "activated"} successfully`);
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+    onError: () => {
+      toast.error("Failed to update link status");
+    },
+  });
+}
+
 /** Mutation: delete a link by id. Invalidates ['links'] on success. */
 export function useDeleteLink() {
   const queryClient = useQueryClient();

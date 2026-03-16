@@ -8,11 +8,15 @@ import {
   QrCode as QrCodeIcon,
   AlertTriangle,
   Plus,
+  Edit,
+  ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-import { useLinks, useDeleteLink } from "@/hooks/useLinks";
+import { useLinks, useDeleteLink, useUpdateLinkStatus } from "@/hooks/useLinks";
 import { CreateLinkDialog } from "@/components/CreateLinkDialog";
+import { EditLinkDialog } from "@/components/EditLinkDialog";
 import type { ShortLink } from "@/services/mockApi";
 
 import {
@@ -46,15 +50,24 @@ import {
 export default function MyLinks() {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [blockId, setBlockId] = useState<string | null>(null);
+  const [editLink, setEditLink] = useState<any | null>(null);
   const [qrLink, setQrLink] = useState<ShortLink | null>(null);
 
   const { data: links, isLoading } = useLinks();
   const deleteMutation = useDeleteLink();
+  const updateStatusMutation = useUpdateLinkStatus();
 
   const handleDelete = () => {
     if (!deleteId) return;
     deleteMutation.mutate(deleteId, {
       onSettled: () => setDeleteId(null),
+    });
+  };
+
+  const handleStatusUpdate = (id: string, newStatus: string) => {
+    updateStatusMutation.mutate({ id, status: newStatus }, {
+      onSettled: () => setBlockId(null),
     });
   };
 
@@ -158,6 +171,8 @@ export default function MyLinks() {
                     className={
                       link.status.toLowerCase() === "active"
                         ? "bg-green-500 hover:bg-green-600"
+                        : link.status.toLowerCase() === "blocked" 
+                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         : ""
                     }
                   >
@@ -181,6 +196,11 @@ export default function MyLinks() {
                       >
                         Copy Short URL
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setEditLink(link)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" /> Edit Link
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() =>
@@ -193,6 +213,21 @@ export default function MyLinks() {
                         <QrCodeIcon className="mr-2 h-4 w-4" /> Generate QR
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      {link.status.toLowerCase() === "active" ? (
+                        <DropdownMenuItem
+                          className="text-orange-500 focus:text-orange-600 focus:bg-orange-50"
+                          onClick={() => setBlockId(link.id)}
+                        >
+                          <ShieldAlert className="mr-2 h-4 w-4" /> Block Link
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          className="text-green-600 focus:text-green-700 focus:bg-green-50"
+                          onClick={() => handleStatusUpdate(link.id, "active")}
+                        >
+                          <ShieldCheck className="mr-2 h-4 w-4" /> Activate Link
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         className="text-destructive focus:bg-destructive/10"
                         onClick={() => setDeleteId(link.id)}
@@ -207,6 +242,45 @@ export default function MyLinks() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Link Dialog */}
+      {editLink && (
+        <EditLinkDialog 
+          link={editLink} 
+          open={!!editLink} 
+          onOpenChange={(open) => !open && setEditLink(null)} 
+        />
+      )}
+
+      {/* Block Confirmation Dialog */}
+      <Dialog
+        open={!!blockId}
+        onOpenChange={(open) => !open && setBlockId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-orange-500" />
+              Confirm Blocking
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to block this link? Users who click it will no longer be redirected to the original destination.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockId(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 outline-none focus:ring-orange-500"
+              onClick={() => blockId && handleStatusUpdate(blockId, "blocked")}
+              disabled={updateStatusMutation.isPending}
+            >
+              {updateStatusMutation.isPending ? "Blocking..." : "Block Link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
