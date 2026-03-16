@@ -1,0 +1,16 @@
+
+Todo:
+  ☐ expiration times of short url (for like conference)
+  ☐ rate limiting
+  ☐ status (ACTIVE, INACTIVE, BLOCKED, EXPIRED)
+  ☐ can add tags (blog, protfolio, etc)
+
+
+/*
+'Cmd/Ctrl+Enter' // Triggers `Todo: Toggle Box`
+'Alt+Enter' // Triggers `Todo: Toggle Box`
+'Alt+D' // Triggers `Todo: Toggle Done`
+'Alt+C' // Triggers `Todo: Toggle Cancelled`
+'Alt+S' // Triggers `Todo: Toggle Start`
+'Cmd/Ctrl+Shift+A' // Triggers  `Todo: Archive`
+*/

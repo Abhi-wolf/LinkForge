@@ -1,0 +1,172 @@
+import { z } from "zod";
+import { loggedInUserProcedure } from "../routers/trpc/context";
+import { UrlService } from "../services/url.service";
+import { UrlRepository } from "../repositories/url.repository";
+import { CacheRepository } from "../repositories/cache.repository";
+import logger from "../config/logger.config";
+import { InternalServerError } from "../utils/errors/app.error";
+import { NextFunction, Request, Response } from "express";
+import { UAParser } from "ua-parser-js";
+import geoip from "geoip-lite";
+import {
+  addAnalyticsJob,
+  IAnalyticsJob,
+} from "../producers/analytics.producer";
+import { AnalyticsService } from "../services/analytics.service";
+import { AnalyticsRepository } from "../repositories/analytics.repository";
+
+const urlService = new UrlService(new UrlRepository(), new CacheRepository());
+const analyticsService = new AnalyticsService(
+  new AnalyticsRepository(),
+  new UrlRepository(),
+);
+
+export const urlController = {
+  create: loggedInUserProcedure
+    .input(
+      z.object({
+        originalUrl: z.string().url("Invalid URL"),
+        tags: z.array(z.string()).optional(),
+        expirationDate: z.coerce.date().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const url = await urlService.createShortUrl({
+          originalUrl: input.originalUrl,
+          tags: input.tags,
+          expirationDate: input.expirationDate,
+        });
+        return { url };
+      } catch (error) {
+        logger.error(`Error creating URL: ${error}`);
+        throw new InternalServerError("Error creating URL");
+      }
+    }),
+
+  getOriginalUrl: loggedInUserProcedure
+    .input(
+      z.object({
+        shortUrl: z.string().min(1, "Short URL is required"),
+      }),
+    )
+    .query(async ({ input }) => {
+      try {
+        const result = await urlService.getOriginalUrl(input.shortUrl);
+        return result;
+      } catch (error) {
+        logger.error(`Error getting original URL: ${error}`);
+        throw new InternalServerError("Error getting original URL");
+      }
+    }),
+
+  getAllUrls: loggedInUserProcedure.query(async () => {
+    try {
+      logger.info("Fetching URLs for user");
+      const urls = await urlService.getAllUrlsForUser();
+      return urls;
+    } catch (error) {
+      logger.error(`Error fetching URLs for user : ${error}`);
+      throw new InternalServerError("Error fetching URLs");
+    }
+  }),
+};
+
+export async function redirectUrl(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  const parser = new UAParser(userAgent);
+  const result = parser.getResult();
+
+  let ip =
+    (req.headers["x-forwarded-for"] as string) ||
+    req.socket.remoteAddress ||
+    req.ip ||
+    "";
+
+  if (ip === "::1") ip = "127.0.0.1";
+
+  const geo = geoip.lookup(ip);
+
+  // console.log("Parsed User Agent = ", result);
+  // console.log("LOCATION DETAILS = ", ip, geo);
+
+  const location = {
+    country: geo?.country || "unknown",
+    region: geo?.region || "unknown",
+    city: geo?.city || "unknown",
+    timezone: geo?.timezone || "unknown",
+  };
+
+  const { shortUrl } = req.params;
+
+  const url = await urlService.getOriginalUrl(shortUrl);
+
+  if (!url) {
+    res.status(404).json({
+      success: false,
+      message: "URL not found",
+    });
+    return;
+  }
+
+  const analyticsData: IAnalyticsJob = {
+    shortUrl: shortUrl,
+    os: result.os.name || "Linux",
+    browser: result.browser.name || "Chrome",
+    device: result.device.type || "desktop",
+    utcDate: new Date().toISOString(),
+    ...location,
+  };
+
+  await addAnalyticsJob(analyticsData);
+
+  res.redirect(url.originalUrl);
+}
+
+export async function getAnalyticsForUrlId(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const { urlId } = req.params;
+  const { startDate, endDate, timezone } = req.query;
+
+  console.log(
+    "URL ID : ",
+    urlId,
+    " START DATE : ",
+    startDate,
+    " END DATE : ",
+    endDate,
+    " TIMEZONE : ",
+    timezone,
+  );
+
+  if (
+    typeof startDate !== "string" ||
+    typeof endDate !== "string" ||
+    typeof timezone !== "string"
+  ) {
+    res.status(400).json({
+      success: false,
+      message: "Date and timezone are required",
+    });
+    return;
+  }
+
+  const analytics = await analyticsService.getAggregatedAnalyticsForDate(
+    urlId,
+    startDate,
+    endDate,
+    timezone,
+  );
+
+  res.status(200).json({
+    success: true,
+    data: analytics,
+  });
+}

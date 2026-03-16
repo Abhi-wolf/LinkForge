@@ -1,0 +1,59 @@
+services:
+  mongo:
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - 27017:27017
+    networks:
+      - backend
+    volumes:
+      - ur_shortener_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    networks:
+      - backend
+    volumes:
+      - redis_ur_shortener_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - 4000:4000
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    environment:
+      - PORT=4000
+      - DB_URL=mongodb://mongo:27017/url_shortener
+      - REDIS_URL=redis://redis:6379
+      - REDIS_COUNTER_KEY=url_shortener_counter
+      - BASE_URL=http://api:4000
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mongodb_ur_shortener_data:
+  redis_ur_shortener_data:
