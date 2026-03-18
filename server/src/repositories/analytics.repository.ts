@@ -34,6 +34,12 @@ export class AnalyticsRepository {
     return analytics;
   }
 
+  async deleteAnalyticsByUrlId(urlId: string) {
+    await RawAnalytics.deleteMany({ urlId });
+    await HourlyAggregatedAnalytics.deleteMany({ urlId });
+    return;
+  }
+
   async aggregateAnalytics(start: Date, end: Date) {
     const rawAnalytics = await RawAnalytics.find({
       utcDate: {

@@ -8,7 +8,12 @@ type ServerConfig = {
   REDIS_COUNTER_KEY: string;
   BASE_URL: string;
   ANALYTICS_QUEUE: string;
-  AGGREGATION_ANALYTICS_QUEUE: string;
+  AGGREGATION_ANALYTICS_SCHEDULER: string;
+  JWT_ACCESS_SECRET: string;
+  JWT_REFRESH_SECRET: string;
+  ACCESS_TOKEN_EXPIRE: string;
+  REFRESH_TOKEN_EXPIRE: string;
+  URL_EXPIRY_SCHEDULER: string;
 };
 
 function loadEnv() {
@@ -25,6 +30,13 @@ export const serverConfig: ServerConfig = {
   REDIS_COUNTER_KEY: process.env.REDIS_COUNTER_KEY || "url_shortener_counter",
   BASE_URL: process.env.BASE_URL || "http://localhost:4000",
   ANALYTICS_QUEUE: process.env.ANALYTICS_QUEUE || "analytics_queue",
-  AGGREGATION_ANALYTICS_QUEUE:
-    process.env.AGGREGATION_ANALYTICS_QUEUE || "aggregation_analytics_queue",
+  AGGREGATION_ANALYTICS_SCHEDULER:
+    process.env.AGGREGATION_ANALYTICS_SCHEDULER ||
+    "aggregation_analytics_scheduler",
+  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || "access_secret_123",
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh_secret_123",
+  ACCESS_TOKEN_EXPIRE: process.env.ACCESS_TOKEN_EXPIRE || "15m",
+  REFRESH_TOKEN_EXPIRE: process.env.REFRESH_TOKEN_EXPIRE || "7d",
+  URL_EXPIRY_SCHEDULER:
+    process.env.URL_EXPIRY_SCHEDULER || "url_expiry_scheduler",
 };

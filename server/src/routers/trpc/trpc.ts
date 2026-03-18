@@ -4,6 +4,7 @@ import { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 export const createContext = ({ req, res }: CreateExpressContextOptions) => ({
   req,
   res,
+  user: null as { userId: string, tokenVersion: number } | null
 });
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

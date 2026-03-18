@@ -1,14 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
-import { linkService } from "@/services/linkService";
 import { useTRPC } from "@/services/trpc";
 
 /** Fetch all links for the authenticated user. */
 export function useLinks() {
   const trpc = useTRPC();
 
-  return useQuery(trpc.url.getAllUrls.queryOptions());
+  return useQuery(trpc.url.getAllUrlsOfUser.queryOptions());
 }
 
 /** Mutation: create a new short link. Invalidates ['links'] on success. */
@@ -20,7 +17,7 @@ export function useCreateLink() {
     trpc.url.create.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries({
-          queryKey: trpc.url.getAllUrls.queryKey(),
+          queryKey: trpc.url.getAllUrlsOfUser.queryKey(),
         });
       },
       onError: (error) => {
@@ -32,56 +29,57 @@ export function useCreateLink() {
 
 /** Mutation: update the original URL of a link. */
 export function useUpdateLink() {
+  const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, originalUrl }: { id: string; originalUrl: string }) => {
-      // Mock API call
-      console.log(`Updating link ${id} with new URL: ${originalUrl}`);
-      return { id, originalUrl };
-    },
-    onSuccess: () => {
-      toast.success("Link updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["links"] });
-    },
-    onError: () => {
-      toast.error("Failed to update link");
-    },
-  });
+  return useMutation(
+    trpc.url.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.url.getAllUrlsOfUser.queryKey(),
+        });
+      },
+      onError: (error) => {
+        console.error(error);
+      },
+    }),
+  );
 }
 
 /** Mutation: update status of a link (e.g., active, blocked). */
 export function useUpdateLinkStatus() {
+  const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      // Mock API call
-      console.log(`Updating status for link ${id} to: ${status}`);
-      return { id, status };
-    },
-    onSuccess: (_, variables) => {
-      toast.success(`Link ${variables.status === "blocked" ? "blocked" : "activated"} successfully`);
-      queryClient.invalidateQueries({ queryKey: ["links"] });
-    },
-    onError: () => {
-      toast.error("Failed to update link status");
-    },
-  });
+  return useMutation(
+    trpc.url.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.url.getAllUrlsOfUser.queryKey(),
+        });
+      },
+      onError: (error) => {
+        console.error(error);
+      },
+    }),
+  );
 }
 
 /** Mutation: delete a link by id. Invalidates ['links'] on success. */
 export function useDeleteLink() {
+  const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => linkService.deleteLink(id),
-    onSuccess: () => {
-      toast.success("Link deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["links"] });
-    },
-    onError: () => {
-      toast.error("Failed to delete link");
-    },
-  });
+  return useMutation(
+    trpc.url.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.url.getAllUrlsOfUser.queryKey(),
+        });
+      },
+      onError: (error) => {
+        console.error(error);
+      },
+    }),
+  );
 }

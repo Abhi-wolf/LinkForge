@@ -46,12 +46,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { UrlStatus } from "@/types/url.types";
 
 export default function MyLinks() {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [blockId, setBlockId] = useState<string | null>(null);
-  const [editLink, setEditLink] = useState<any | null>(null);
+  const [deactivateId, setDeactivateId] = useState<string | null>(null);
+  const [editLink, setEditLink] = useState<ShortLink | null>(null);
   const [qrLink, setQrLink] = useState<ShortLink | null>(null);
 
   const { data: links, isLoading } = useLinks();
@@ -60,15 +62,33 @@ export default function MyLinks() {
 
   const handleDelete = () => {
     if (!deleteId) return;
-    deleteMutation.mutate(deleteId, {
-      onSettled: () => setDeleteId(null),
-    });
+    deleteMutation.mutate(
+      { id: deleteId },
+      {
+        onSettled: () => setDeleteId(null),
+        onSuccess: () => {
+          toast.success("Link deleted");
+        },
+        onError: () => {
+          toast.error("Failed to delete link");
+        },
+      },
+    );
   };
 
-  const handleStatusUpdate = (id: string, newStatus: string) => {
-    updateStatusMutation.mutate({ id, status: newStatus }, {
-      onSettled: () => setBlockId(null),
-    });
+  const handleStatusUpdate = (id: string, newStatus: UrlStatus) => {
+    updateStatusMutation.mutate(
+      { id, status: newStatus },
+      {
+        onSettled: () => setDeactivateId(null),
+        onSuccess: () => {
+          toast.success("Link status updated");
+        },
+        onError: () => {
+          toast.error("Failed to update link status");
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -171,9 +191,9 @@ export default function MyLinks() {
                     className={
                       link.status.toLowerCase() === "active"
                         ? "bg-green-500 hover:bg-green-600"
-                        : link.status.toLowerCase() === "blocked" 
-                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        : ""
+                        : link.status.toLowerCase() === "blocked"
+                          ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          : ""
                     }
                   >
                     {link.status.charAt(0).toUpperCase() + link.status.slice(1)}
@@ -197,7 +217,9 @@ export default function MyLinks() {
                         Copy Short URL
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setEditLink(link)}
+                        onClick={() =>
+                          setEditLink(link as unknown as ShortLink)
+                        }
                       >
                         <Edit className="mr-2 h-4 w-4" /> Edit Link
                       </DropdownMenuItem>
@@ -209,21 +231,26 @@ export default function MyLinks() {
                       >
                         <BarChart2 className="mr-2 h-4 w-4" /> View Analytics
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setQrLink(link as any)}>
+                      <DropdownMenuItem
+                        onClick={() => setQrLink(link as unknown as ShortLink)}
+                      >
                         <QrCodeIcon className="mr-2 h-4 w-4" /> Generate QR
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {link.status.toLowerCase() === "active" ? (
                         <DropdownMenuItem
-                          className="text-orange-500 focus:text-orange-600 focus:bg-orange-50"
-                          onClick={() => setBlockId(link.id)}
+                          className="text-orange-600 focus:text-orange-700 focus:bg-orange-50"
+                          onClick={() => setDeactivateId(link.id)}
                         >
-                          <ShieldAlert className="mr-2 h-4 w-4" /> Block Link
+                          <ShieldAlert className="mr-2 h-4 w-4" /> Deactivate
+                          Link
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem
                           className="text-green-600 focus:text-green-700 focus:bg-green-50"
-                          onClick={() => handleStatusUpdate(link.id, "active")}
+                          onClick={() =>
+                            handleStatusUpdate(link.id, UrlStatus.ACTIVE)
+                          }
                         >
                           <ShieldCheck className="mr-2 h-4 w-4" /> Activate Link
                         </DropdownMenuItem>
@@ -245,38 +272,44 @@ export default function MyLinks() {
 
       {/* Edit Link Dialog */}
       {editLink && (
-        <EditLinkDialog 
-          link={editLink} 
-          open={!!editLink} 
-          onOpenChange={(open) => !open && setEditLink(null)} 
+        <EditLinkDialog
+          link={editLink}
+          open={!!editLink}
+          onOpenChange={(open) => !open && setEditLink(null)}
         />
       )}
 
-      {/* Block Confirmation Dialog */}
+      {/* Deactivate Confirmation Dialog */}
       <Dialog
-        open={!!blockId}
-        onOpenChange={(open) => !open && setBlockId(null)}
+        open={!!deactivateId}
+        onOpenChange={(open) => !open && setDeactivateId(null)}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-orange-500" />
-              Confirm Blocking
+              <ShieldAlert className="h-5 w-5 text-orange-600" />
+              Confirm Deactivation
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to block this link? Users who click it will no longer be redirected to the original destination.
+              Are you sure you want to deactivate this link? Users who click it
+              will no longer be redirected to the original destination.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBlockId(null)}>
+            <Button variant="outline" onClick={() => setDeactivateId(null)}>
               Cancel
             </Button>
             <Button
-              className="bg-orange-500 hover:bg-orange-600 outline-none focus:ring-orange-500"
-              onClick={() => blockId && handleStatusUpdate(blockId, "blocked")}
+              className="bg-orange-600 hover:bg-orange-700 text-white outline-none focus:ring-orange-500"
+              onClick={() =>
+                deactivateId &&
+                handleStatusUpdate(deactivateId, UrlStatus.INACTIVE)
+              }
               disabled={updateStatusMutation.isPending}
             >
-              {updateStatusMutation.isPending ? "Blocking..." : "Block Link"}
+              {updateStatusMutation.isPending
+                ? "Deactivating..."
+                : "Deactivate Link"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -317,7 +350,7 @@ export default function MyLinks() {
       <Dialog open={!!qrLink} onOpenChange={(open) => !open && setQrLink(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>QR Code for {qrLink?.alias}</DialogTitle>
+            <DialogTitle>QR Code for {qrLink?.shortUrl}</DialogTitle>
             <DialogDescription>
               Scan this QR code to visit the link directly.
             </DialogDescription>

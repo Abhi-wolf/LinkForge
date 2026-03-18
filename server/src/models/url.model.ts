@@ -17,7 +17,6 @@ export enum UrlStatus {
   INACTIVE = "inactive",
   DELETED = "deleted",
   EXPIRED = "expired",
-  BLOCKED = "blocked",
 }
 
 const urlSchema = new mongoose.Schema(
@@ -60,6 +59,11 @@ const urlSchema = new mongoose.Schema(
 
 // unique property will automatically create index
 // urlSchema.index({ shortUrl: 1 }, { unique: true });
+
+urlSchema.virtual("isExpired").get(function () {
+  if (!this.expirationDate) return false;
+  return this.expirationDate < new Date();
+});
 
 const Url = mongoose.model<IUrl>("Url", urlSchema);
 

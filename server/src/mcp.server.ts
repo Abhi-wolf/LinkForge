@@ -6,8 +6,13 @@ import { UrlService } from "./services/url.service";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import cors from "cors";
+import { AnalyticsRepository } from "./repositories/analytics.repository";
 
-const urlService = new UrlService(new UrlRepository(), new CacheRepository());
+const urlService = new UrlService(
+  new UrlRepository(),
+  new CacheRepository(),
+  new AnalyticsRepository(),
+);
 
 function registerTools(server: McpServer) {
   server.registerTool(

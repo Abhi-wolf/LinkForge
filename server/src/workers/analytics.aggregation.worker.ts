@@ -13,7 +13,7 @@ const analyticsService = new AnalyticsService(
 
 async function setUpAggregationAnalyticsWorker() {
   const worker = new Worker(
-    serverConfig.AGGREGATION_ANALYTICS_QUEUE,
+    serverConfig.AGGREGATION_ANALYTICS_SCHEDULER,
     async (job) => {
       logger.info(
         `Processing aggregation analytics job ${job.id} with name ${job.name}`,

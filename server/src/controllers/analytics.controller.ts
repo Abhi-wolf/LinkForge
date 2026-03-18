@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { loggedInUserProcedure } from "../routers/trpc/context";
 import logger from "../config/logger.config";
-import { InternalServerError } from "../utils/errors/app.error";
 import { AnalyticsService } from "../services/analytics.service";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { UrlRepository } from "../repositories/url.repository";
+import { handleAppError } from "../utils/errors/trpc.error";
 
 const analyticsService = new AnalyticsService(
   new AnalyticsRepository(),
@@ -32,17 +32,17 @@ export const analyticsController = {
         return result;
       } catch (error) {
         logger.error(`Error getting analytics URL: ${error}`);
-        throw new InternalServerError("Error getting analytics URL");
+        handleAppError(error);
       }
     }),
 
-  getDashboardAnalytics: loggedInUserProcedure.query(async () => {
+  getDashboardAnalytics: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
-      const result = await analyticsService.getUserAnalytics();
+      const result = await analyticsService.getUserAnalytics(ctx.user!.userId);
       return result;
     } catch (error) {
       logger.error(`Error getting dashboard analytics: ${error}`);
-      throw new InternalServerError("Error getting dashboard analytics");
+      handleAppError(error);
     }
   }),
 };

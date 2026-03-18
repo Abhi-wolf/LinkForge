@@ -65,9 +65,9 @@ export class AnalyticsService {
     return analytics;
   }
 
-  async getUserAnalytics() {
+  async getUserAnalytics(userId: string) {
     const baseUrl = serverConfig.BASE_URL;
-    const userId = "69b6e3b7329d6f7cf8bd16b4"; // todo: get user id from auth context
+    // const userId = "69b6e3b7329d6f7cf8bd16b4"; // todo: get user id from auth context
 
     const userUrls = await this.urlRepository.getUrlsOfUser(userId);
     const activeLinks = userUrls.filter(
@@ -75,12 +75,12 @@ export class AnalyticsService {
     )?.length;
 
     // recent links created in the last 7 days
-    let recentLinks = userUrls.sort(
+    const sortedLinks = userUrls.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    recentLinks = recentLinks.map((link) => ({
+    const recentLinks = sortedLinks?.slice(0, 5)?.map((link) => ({
       id: link.id,
       shortUrl: link.shortUrl,
       originalUrl: link.originalUrl,

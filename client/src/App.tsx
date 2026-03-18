@@ -108,12 +108,21 @@ const router = createBrowserRouter([
 
 function App() {
   const queryClient = getQueryClient();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  console.log("Access token in App component:", accessToken);
 
   const [trpcClient] = useState(() =>
     createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
           url: serverConfig.VITE_TRPC_URL,
+          // headers() {
+          //   return {
+          //     Authorization: accessToken ?? undefined,
+          //   };
+          // },
+          fetch: (url, options) =>
+            fetch(url, { ...options, credentials: "include" }),
         }),
       ],
     }),

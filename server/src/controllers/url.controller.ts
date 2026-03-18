@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { loggedInUserProcedure } from "../routers/trpc/context";
+import { authProcedure, loggedInUserProcedure } from "../routers/trpc/context";
 import { UrlService } from "../services/url.service";
 import { UrlRepository } from "../repositories/url.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import logger from "../config/logger.config";
-import { InternalServerError } from "../utils/errors/app.error";
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
 import {
@@ -14,15 +13,21 @@ import {
 } from "../producers/analytics.producer";
 import { AnalyticsService } from "../services/analytics.service";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
+import { handleAppError } from "../utils/errors/trpc.error";
+import { UrlStatus } from "../models/url.model";
 
-const urlService = new UrlService(new UrlRepository(), new CacheRepository());
+const urlService = new UrlService(
+  new UrlRepository(),
+  new CacheRepository(),
+  new AnalyticsRepository(),
+);
 const analyticsService = new AnalyticsService(
   new AnalyticsRepository(),
   new UrlRepository(),
 );
 
 export const urlController = {
-  create: loggedInUserProcedure
+  create: authProcedure
     .input(
       z.object({
         originalUrl: z.string().url("Invalid URL"),
@@ -30,17 +35,65 @@ export const urlController = {
         expirationDate: z.coerce.date().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        const url = await urlService.createShortUrl({
-          originalUrl: input.originalUrl,
-          tags: input.tags,
-          expirationDate: input.expirationDate,
-        });
+        const url = await urlService.createShortUrl(
+          {
+            originalUrl: input.originalUrl,
+            tags: input.tags,
+            expirationDate: input.expirationDate,
+          },
+          ctx.user?.userId,
+        );
         return { url };
       } catch (error) {
         logger.error(`Error creating URL: ${error}`);
-        throw new InternalServerError("Error creating URL");
+        handleAppError(error);
+      }
+    }),
+
+  update: loggedInUserProcedure
+    .input(
+      z.object({
+        id: z.string().min(24, "ID is required"),
+        originalUrl: z.string().url("Invalid URL").optional(),
+        tags: z.array(z.string()).optional(),
+        expirationDate: z.coerce.date().optional(),
+        status: z.nativeEnum(UrlStatus).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const url = await urlService.updateUrl(
+          input.id,
+          {
+            originalUrl: input?.originalUrl,
+            tags: input?.tags,
+            expirationDate: input?.expirationDate,
+            status: input?.status,
+          },
+          ctx.user!.userId,
+        );
+        return { url };
+      } catch (error) {
+        logger.error(`Error updating URL: ${error}`);
+        handleAppError(error);
+      }
+    }),
+
+  delete: loggedInUserProcedure
+    .input(
+      z.object({
+        id: z.string().min(24, "ID is required"),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        await urlService.deleteUrl(input.id, ctx.user!.userId);
+        return { success: true };
+      } catch (error) {
+        logger.error(`Error deleting URL: ${error}`);
+        handleAppError(error);
       }
     }),
 
@@ -56,27 +109,23 @@ export const urlController = {
         return result;
       } catch (error) {
         logger.error(`Error getting original URL: ${error}`);
-        throw new InternalServerError("Error getting original URL");
+        handleAppError(error);
       }
     }),
 
-  getAllUrls: loggedInUserProcedure.query(async () => {
+  getAllUrlsOfUser: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
-      logger.info("Fetching URLs for user");
-      const urls = await urlService.getAllUrlsForUser();
+      console.info("Fetching URLs for user = ", ctx.user!.userId);
+      const urls = await urlService.getAllUrlsOfUser(ctx.user!.userId);
       return urls;
     } catch (error) {
       logger.error(`Error fetching URLs for user : ${error}`);
-      throw new InternalServerError("Error fetching URLs");
+      handleAppError(error);
     }
   }),
 };
 
-export async function redirectUrl(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function redirectUrl(req: Request, res: Response) {
   const userAgent = req.headers["user-agent"] || "Unknown";
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
@@ -124,14 +173,11 @@ export async function redirectUrl(
 
   await addAnalyticsJob(analyticsData);
 
+  //302 → Temporary redirect (browser re-checks every time) — good for tracking analytics
   res.redirect(url.originalUrl);
 }
 
-export async function getAnalyticsForUrlId(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function getAnalyticsForUrlId(req: Request, res: Response) {
   const { urlId } = req.params;
   const { startDate, endDate, timezone } = req.query;
 

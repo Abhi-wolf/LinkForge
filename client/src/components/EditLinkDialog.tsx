@@ -23,12 +23,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
+import { toast } from "sonner";
 
 const updateLinkSchema = z.object({
   originalUrl: z
     .string()
     .url("Please enter a valid URL (e.g. https://example.com)"),
+  tags: z.string().optional(),
+  expirationDate: z.string().optional(),
 });
 
 type UpdateLinkValues = z.infer<typeof updateLinkSchema>;
@@ -37,12 +41,18 @@ interface EditLinkDialogProps {
   link: {
     id: string;
     originalUrl: string;
+    tags?: string[] | null;
+    expirationDate?: string | Date | null;
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function EditLinkDialog({ link, open, onOpenChange }: EditLinkDialogProps) {
+export function EditLinkDialog({
+  link,
+  open,
+  onOpenChange,
+}: EditLinkDialogProps) {
   const updateLink = useUpdateLink();
 
   const form = useForm<UpdateLinkValues>({
@@ -53,21 +63,37 @@ export function EditLinkDialog({ link, open, onOpenChange }: EditLinkDialogProps
   // Re-sync default values when link changes or modal opens
   useEffect(() => {
     if (open) {
-      form.reset({ originalUrl: link.originalUrl });
+      form.reset({
+        originalUrl: link.originalUrl,
+        tags: link.tags ? link.tags.join(", ") : "",
+        expirationDate: link.expirationDate
+          ? new Date(link.expirationDate).toISOString().split("T")[0]
+          : "",
+      });
     }
-  }, [open, link.originalUrl, form]);
+  }, [open, link, form]);
 
   const onSubmit = (values: UpdateLinkValues) => {
+    const tagsArray = values.tags
+      ? values.tags.split(",").map((tag) => tag.trim())
+      : [];
+    const expirationDate = values.expirationDate
+      ? new Date(values.expirationDate)
+      : undefined;
+
     updateLink.mutate(
       {
         id: link.id,
         originalUrl: values.originalUrl,
+        tags: tagsArray,
+        expirationDate: expirationDate,
       },
       {
         onSuccess: () => {
           onOpenChange(false);
+          toast.success("Link updated successfully");
         },
-      }
+      },
     );
   };
 
@@ -106,6 +132,48 @@ export function EditLinkDialog({ link, open, onOpenChange }: EditLinkDialogProps
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }: { field: any }) => (
+                <FormItem>
+                  <FormLabel>
+                    Tags{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="social, marketing, blog" {...field} />
+                  </FormControl>
+                  <FormDescription>Separate tags with commas.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="expirationDate"
+              render={({ field }: { field: any }) => (
+                <FormItem>
+                  <FormLabel>
+                    Expiration Date{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    The link will expire after this date.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
               <Button
                 type="button"
@@ -114,10 +182,7 @@ export function EditLinkDialog({ link, open, onOpenChange }: EditLinkDialogProps
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={updateLink.isPending}
-              >
+              <Button type="submit" disabled={updateLink.isPending}>
                 {updateLink.isPending ? "Updating..." : "Update Link"}
               </Button>
             </DialogFooter>

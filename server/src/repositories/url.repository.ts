@@ -1,4 +1,4 @@
-import Url, { IUrl } from "../models/url.model";
+import Url, { IUrl, UrlStatus } from "../models/url.model";
 
 export interface CreateUrl {
   originalUrl: string;
@@ -26,8 +26,31 @@ export class UrlRepository {
     return url;
   }
 
+  async updateUrl(id: string, data: Partial<IUrl>): Promise<IUrl | null> {
+    const updatedUrl = await Url.findOneAndUpdate({ _id: id }, data, {
+      new: true,
+    });
+    return updatedUrl;
+  }
+
+  async deleteUrl(id: string): Promise<void> {
+    await Url.deleteOne({ _id: id });
+    return;
+  }
+
   async findByShortUrl(shortUrl: string): Promise<IUrl | null> {
-    const url = await Url.findOne({ shortUrl });
+    const url = await Url.findOne({
+      shortUrl,
+      status: { $ne: UrlStatus.DELETED },
+    });
+    return url;
+  }
+
+  async findById(id: string): Promise<IUrl | null> {
+    const url = await Url.findOne({
+      _id: id,
+      status: { $ne: UrlStatus.DELETED },
+    });
     return url;
   }
 
@@ -59,7 +82,10 @@ export class UrlRepository {
   }
 
   async findStatsByShortUrl(shortUrl: string): Promise<UrlStats | null> {
-    const url = await Url.findOne({ shortUrl });
+    const url = await Url.findOne({
+      shortUrl,
+      status: { $ne: UrlStatus.DELETED },
+    });
 
     if (!url) {
       return null;
@@ -79,19 +105,8 @@ export class UrlRepository {
   }
 
   async getUrlsOfUser(userId: string) {
-    const urls = await Url.find({ userId }).select({
-      _id: 1,
-      shortUrl: 1,
-      status: 1,
-      originalUrl: 1,
-      createdAt: 1,
-    });
-    return urls?.map((url) => ({
-      id: url._id?.toString(),
-      shortUrl: url.shortUrl,
-      status: url.status,
-      originalUrl: url.originalUrl,
-      createdAt: url.createdAt,
-    }));
+    const urls = await Url.find({ userId, status: { $ne: UrlStatus.DELETED } });
+
+    return urls;
   }
 }

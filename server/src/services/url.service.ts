@@ -1,28 +1,45 @@
 import { serverConfig } from "../config";
 import { CreateUrlDto } from "../dtos/url.dto";
+import { IUrl, UrlStatus } from "../models/url.model";
+import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import { UrlRepository } from "../repositories/url.repository";
 import { toBase62 } from "../utils/base62";
-import { NotFoundError } from "../utils/errors/app.error";
+import { ForbiddenError, NotFoundError } from "../utils/errors/app.error";
 
 export class UrlService {
   constructor(
     private readonly urlRepository: UrlRepository,
     private readonly cacheRepository: CacheRepository,
+    private readonly analyticsRepository: AnalyticsRepository,
   ) {}
 
-  async createShortUrl(urlData: CreateUrlDto) {
-    const nextId = await this.cacheRepository.getNextId();
+  async createShortUrl(urlData: CreateUrlDto, userId?: string) {
+    let shortUrl: string;
+    let url;
 
-    const shortUrl = toBase62(nextId);
+    while (true) {
+      const nextId = await this.cacheRepository.getNextId();
 
-    const url = await this.urlRepository.create({
-      originalUrl: urlData.originalUrl,
-      tags: urlData.tags,
-      expirationDate: urlData.expirationDate,
-      shortUrl: shortUrl,
-      userId: "69b6e3b7329d6f7cf8bd16b4", // todo: get user id from auth context
-    });
+      shortUrl = toBase62(nextId);
+
+      // Check if the generated short URL already exists (unlikely but possible)
+      const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
+
+      if (existingUrl) {
+        continue; // Collision occurred, generate a new short URL
+      }
+
+      url = await this.urlRepository.create({
+        originalUrl: urlData.originalUrl,
+        tags: urlData.tags,
+        expirationDate: urlData.expirationDate,
+        shortUrl: shortUrl,
+        userId: userId ? userId : undefined,
+      });
+
+      break;
+    }
 
     await this.cacheRepository.setUrlMapping(shortUrl, urlData.originalUrl);
 
@@ -59,7 +76,9 @@ export class UrlService {
       throw new NotFoundError("Url not found");
     }
 
-    // await this.urlRepository.incrementClicks(shortUrl);
+    if (url.status !== UrlStatus.ACTIVE) {
+      throw new NotFoundError("Url not found");
+    }
     await this.cacheRepository.setUrlMapping(shortUrl, url.originalUrl);
 
     return {
@@ -73,8 +92,8 @@ export class UrlService {
     return;
   }
 
-  async getAllUrlsForUser() {
-    const urls = await this.urlRepository.findAll();
+  async getAllUrlsOfUser(userId: string) {
+    const urls = await this.urlRepository.getUrlsOfUser(userId);
     const baseUrl = serverConfig.BASE_URL;
 
     return urls.map((url) => {
@@ -83,7 +102,6 @@ export class UrlService {
         originalUrl: url.originalUrl,
         shortUrl: url.shortUrl,
         fullUrl: `${baseUrl}/${url.shortUrl}`,
-        clicks: url.clicks,
         tags: url.tags,
         status: url.status,
         expirationDate: url.expirationDate,
@@ -91,5 +109,73 @@ export class UrlService {
         updatedAt: url.updatedAt,
       };
     });
+  }
+
+  async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
+    console.log("Updating URL with data:", { id, data, userId });
+
+    if (data.shortUrl) {
+      throw new ForbiddenError("Short URL cannot be updated");
+    }
+
+    const existingUrl = await this.urlRepository.findById(id);
+
+    if (!existingUrl) {
+      throw new NotFoundError("Url not found");
+    }
+
+    if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
+      throw new ForbiddenError("You do not have permission to update this URL");
+    }
+
+    if (data.status === UrlStatus.DELETED) {
+      throw new NotFoundError("Url not found");
+    }
+
+    const updatedUrl = await this.urlRepository.updateUrl(id, data);
+
+    if (!updatedUrl) {
+      throw new NotFoundError("Url not found");
+    }
+
+    // if status changed to inactive then remove that from cache
+    if (updatedUrl.status !== UrlStatus.ACTIVE) {
+      await this.cacheRepository.deleteUrlMapping(updatedUrl.shortUrl);
+    } else if (data.originalUrl) {
+      await this.cacheRepository.setUrlMapping(
+        updatedUrl.shortUrl,
+        data.originalUrl,
+      );
+    }
+
+    return {
+      id: updatedUrl._id?.toString(),
+      originalUrl: updatedUrl.originalUrl,
+      shortUrl: updatedUrl.shortUrl,
+      clicks: updatedUrl.clicks,
+      tags: updatedUrl.tags,
+      status: updatedUrl.status,
+      expirationDate: updatedUrl.expirationDate,
+      createdAt: updatedUrl.createdAt,
+      updatedAt: updatedUrl.updatedAt,
+    };
+  }
+
+  async deleteUrl(id: string, userId: string) {
+    const existingUrl = await this.urlRepository.findById(id);
+
+    if (!existingUrl) {
+      throw new NotFoundError("Url not found");
+    }
+
+    if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
+      throw new ForbiddenError("You do not have permission to delete this URL");
+    }
+
+    await this.analyticsRepository.deleteAnalyticsByUrlId(id);
+    await this.urlRepository.updateUrl(id, { status: UrlStatus.DELETED });
+    await this.cacheRepository.deleteUrlMapping(existingUrl.shortUrl);
+
+    return;
   }
 }

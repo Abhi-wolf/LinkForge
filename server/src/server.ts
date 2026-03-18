@@ -18,16 +18,26 @@ import {
 } from "./controllers/url.controller";
 import { createContext } from "./routers/trpc/trpc";
 import { startAnalyticsWorker } from "./workers/analytics.worker";
-import { aggregationAnalyticsQueue } from "./queues/analytics.aggregation.queue";
+import { startAnalyticsAggregationScheduler } from "./queues/analytics.aggregation.scheduler";
+// import { startMcpServer } from "./mcp.server";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import { startUrlExpiryWorker } from "./workers/url.expiry.worker";
+import { startUrlExpirySchedulaer } from "./queues/url.expiry.scheduler";
 import { startAggregationAnalyticsWorker } from "./workers/analytics.aggregation.worker";
-import { startMcpServer } from "./mcp.server";
-import cors from "cors"
 
 const app = express();
 
 app.use(express.json());
 
-app.use(cors());
+// app.use(cors());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:5174"], // e.g., http://localhost:5173
+    credentials: true,
+  }),
+);
 
 /**
  * Registering all the routers and their corresponding routes with out app server object.
@@ -90,23 +100,14 @@ app.listen(serverConfig.PORT, async () => {
   await initRedis();
   await connectDB();
   await startAnalyticsWorker();
-  await startAggregationAnalyticsWorker();
-  await startMcpServer();
 
-  await aggregationAnalyticsQueue.upsertJobScheduler(
-    "aggregate-hourly-analytics",
-    {
-      pattern: "0 * * * *", // every hour at minute 0
-    },
-    {
-      name: "aggregate-hourly-analytics",
-      data: {},
-      opts: {
-        removeOnComplete: true,
-        removeOnFail: 1000,
-      },
-    },
-  );
+  await startAnalyticsAggregationScheduler();
+  await startAggregationAnalyticsWorker();
+
+  await startUrlExpirySchedulaer();
+  await startUrlExpiryWorker();
+
+  // await startMcpServer();
 });
 
 process.on("SIGINT", async () => {
