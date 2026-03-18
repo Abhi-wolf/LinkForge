@@ -12,6 +12,7 @@ export interface IAnalyticsJob {
   city: string;
   timezone: string;
   utcDate: string;
+  correlationId?: string;
 }
 
 export async function addAnalyticsJob(

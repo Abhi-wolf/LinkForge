@@ -17,7 +17,3 @@ export const analyticsQueue = new Queue(serverConfig.ANALYTICS_QUEUE, {
 analyticsQueue.on("error", (error) => {
   logger.error("Submission Queue Error:", error);
 });
-
-analyticsQueue.on("waiting", (job) => {
-  logger.info(`Job ${job.id} is waiting to be processed`);
-});

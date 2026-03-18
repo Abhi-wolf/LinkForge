@@ -9,14 +9,16 @@ async function setUpUrlExpiryWorker() {
   const worker = new Worker(
     serverConfig.URL_EXPIRY_SCHEDULER,
     async (job) => {
-      await Url.updateMany(
-        {
-          expirationDate: { $lt: new Date() },
-          status: { $ne: UrlStatus.EXPIRED },
-        },
-        { status: UrlStatus.EXPIRED },
-      );
-      logger.info("Expired URLs updated");
+      if (job.name === "url-expiry-scheduler-every-10mins") {
+        await Url.updateMany(
+          {
+            expirationDate: { $lt: new Date() },
+            status: { $ne: UrlStatus.EXPIRED },
+          },
+          { status: UrlStatus.EXPIRED },
+        );
+        logger.info("Expired URLs updated");
+      }
     },
     { connection: createNewRedisConnection() },
   );

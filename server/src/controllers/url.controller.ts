@@ -15,6 +15,7 @@ import { AnalyticsService } from "../services/analytics.service";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { UrlStatus } from "../models/url.model";
+import { getCorrelationId } from "../utils/helpers/request.helpers";
 
 const urlService = new UrlService(
   new UrlRepository(),
@@ -169,6 +170,7 @@ export async function redirectUrl(req: Request, res: Response) {
     device: result.device.type || "desktop",
     utcDate: new Date().toISOString(),
     ...location,
+    correlationId: getCorrelationId(),
   };
 
   await addAnalyticsJob(analyticsData);

@@ -5,6 +5,7 @@ import logger from "../config/logger.config";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { AnalyticsService } from "../services/analytics.service";
 import { UrlRepository } from "../repositories/url.repository";
+import { asyncLocalStorage } from "../utils/helpers/request.helpers";
 
 const analyticsService = new AnalyticsService(
   new AnalyticsRepository(),
@@ -15,18 +16,20 @@ async function setUpAnalyticsWorker() {
   const worker = new Worker(
     serverConfig.ANALYTICS_QUEUE,
     async (job) => {
-      logger.info(`Processing analytics job ${job.id}`);
+      return asyncLocalStorage.run(
+        { correlationId: job.data.correlationId },
+        async () => {
+          logger.info(`Processing analytics job ${job.id}`);
 
-      const data = job.data;
-      console.log("ANALYTICS JOB DATA : ", data);
-
-      try {
-        await analyticsService.createRawAnalytics(job.data);
-        logger.info(`Analytics job ${job.id} completed successfully`);
-      } catch (error) {
-        logger.error(`Error processing analytics job ${job.id}: ${error}`);
-        throw error;
-      }
+          try {
+            await analyticsService.createRawAnalytics(job.data);
+            logger.info(`Analytics job ${job.id} completed successfully`);
+          } catch (error) {
+            logger.error(`Error processing analytics job ${job.id}: ${error}`);
+            throw error;
+          }
+        },
+      );
     },
     {
       connection: createNewRedisConnection(),
@@ -35,14 +38,6 @@ async function setUpAnalyticsWorker() {
 
   worker.on("error", (err) => {
     logger.error(`Analytics worker error : ${err}`);
-  });
-
-  worker.on("completed", (job) => {
-    logger.info(`Analytics job ${job.id} processed`);
-  });
-
-  worker.on("failed", (job, error) => {
-    logger.error(`Analytics job ${job?.id} failed: ${error.message} `);
   });
 }
 

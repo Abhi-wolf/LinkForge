@@ -1,5 +1,0 @@
-- Implement auth
-- Implement url expiry
-- Implement anlytics dashboard api
-- make only the active links accessible and allow the use to deactivate/reactivate the links
-- Now there are two hourly analytics doc are created on db -- check why and fix the functionality to create only one analytics doc per hour
