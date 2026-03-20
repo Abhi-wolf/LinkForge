@@ -7,9 +7,10 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from "../utils/errors/app.error";
+import logger from "../config/logger.config";
 
 export class AuthService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) { }
 
   async register(data: any) {
     const existingUser = await this.userRepository.findByEmail(data.email);
@@ -56,22 +57,57 @@ export class AuthService {
     };
   }
 
+  async updateUser(userId: string, data: any) {
+
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    if (data.password) {
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      data.password = hashedPassword
+    }
+
+    const updatedUser = await this.userRepository.update(userId, data);
+
+    return updatedUser;
+  }
+
   async refreshTokens(refreshToken: string) {
     try {
       const decoded: any = jwt.verify(
         refreshToken,
         serverConfig.JWT_REFRESH_SECRET,
       );
-      const user = await this.userRepository.findById(decoded.id);
+
+      logger.info(`Refresh token decoded = ${JSON.stringify(decoded)}`);
+
+      const user = await this.userRepository.findById(decoded.userId);
+
+      logger.info(`Got user from repository ${JSON.stringify(user)}`);
 
       if (!user || user.tokenVersion !== decoded.tokenVersion) {
         throw new UnauthorizedError("Invalid refresh token");
       }
 
-      const tokens = this.generateTokens(user);
+      const updatedUser = await this.userRepository.incrementTokenVersion(decoded.userId);
 
-      await this.userRepository.incrementTokenVersion(decoded.id); // Invalidate old refresh tokens
-      return tokens;
+      logger.info(`Incremented token version for user ${decoded.userId}`);
+
+      if (!updatedUser) {
+        throw new UnauthorizedError("User no longer exists");
+      }
+
+      const tokens = this.generateTokens(updatedUser);
+
+      logger.info(`Generated new tokens for user ${updatedUser._id}`);
+
+      return {
+        userId: updatedUser._id?.toString(),
+        ...tokens
+      };
     } catch (error) {
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
@@ -86,22 +122,32 @@ export class AuthService {
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    return user;
+
+    return {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+    };
   }
 
   private generateTokens(user: any) {
-    const accessToken = jwt.sign(
-      { userId: user._id, email: user.email },
-      serverConfig.JWT_ACCESS_SECRET,
-      { expiresIn: serverConfig.ACCESS_TOKEN_EXPIRE as any },
-    );
+    try {
+      const accessToken = jwt.sign(
+        { userId: user._id, email: user.email },
+        serverConfig.JWT_ACCESS_SECRET,
+        { expiresIn: serverConfig.ACCESS_TOKEN_EXPIRE as any },
+      );
 
-    const refreshToken = jwt.sign(
-      { userId: user._id, tokenVersion: user.tokenVersion },
-      serverConfig.JWT_REFRESH_SECRET,
-      { expiresIn: serverConfig.REFRESH_TOKEN_EXPIRE as any },
-    );
+      const refreshToken = jwt.sign(
+        { userId: user._id, tokenVersion: user.tokenVersion },
+        serverConfig.JWT_REFRESH_SECRET,
+        { expiresIn: serverConfig.REFRESH_TOKEN_EXPIRE as any },
+      );
 
-    return { accessToken, refreshToken };
+      return { accessToken, refreshToken };
+    } catch (error) {
+      console.log("Error generating tokens", error);
+      throw new Error("Failed to generate tokens");
+    }
   }
 }

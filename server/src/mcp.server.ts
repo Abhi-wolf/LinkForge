@@ -7,6 +7,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import cors from "cors";
 import { AnalyticsRepository } from "./repositories/analytics.repository";
+import logger from "./config/logger.config";
 
 const urlService = new UrlService(
   new UrlRepository(),
@@ -99,7 +100,7 @@ export async function startMcpServer() {
   });
 
   app.listen(4200, () => {
-    console.log("MCP SSE server running on http://localhost:4200");
+    logger.info("MCP SSE server running on http://localhost:4200");
   });
 }
 

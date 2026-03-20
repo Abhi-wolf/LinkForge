@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import {
   HourlyAggregatedAnalytics,
   RawAnalytics,
 } from "../models/analytics.model";
+import logger from "../config/logger.config";
 
 export interface CreateRawAnalytics {
   urlId: string;
@@ -13,6 +15,8 @@ export interface CreateRawAnalytics {
   city: string;
   timezone: string;
   utcDate: Date;
+  utmSource?: string;
+  ref?: string;
 }
 
 function increment(map: Map<string, number>, key: string) {
@@ -29,9 +33,18 @@ export class AnalyticsRepository {
     return rawAnalytics;
   }
 
-  async findHourlyAggregatedAnalyticsByUrlId(urlId: string) {
-    const analytics = await HourlyAggregatedAnalytics.find({ urlId });
-    return analytics;
+  async findHourlyAggregatedAnalyticsByUrlId(
+    urlId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    // const analytics = await HourlyAggregatedAnalytics.find({ urlId });
+    const rawDocs = await HourlyAggregatedAnalytics.find({
+      urlId,
+      utcStartDate: { $gte: startDate },
+      utcEndDate: { $lte: endDate },
+    });
+    return rawDocs;
   }
 
   async deleteAnalyticsByUrlId(urlId: string) {
@@ -51,6 +64,8 @@ export class AnalyticsRepository {
     // console.log("START : ", start, " END : ", end);
     // console.log("RAW ANALYTICS : ", rawAnalytics);
 
+    logger.info(`Starting aggregating analytics for date range : ${start} - ${end}`);
+
     const aggregationMap: Map<
       string,
       {
@@ -64,6 +79,8 @@ export class AnalyticsRepository {
         timezone: Map<string, number>;
         utcStartDate: Date;
         utcEndDate: Date;
+        utmSource: Map<string, number>;
+        ref: Map<string, number>;
       }
     > = new Map();
 
@@ -82,6 +99,8 @@ export class AnalyticsRepository {
           timezone: new Map(),
           utcStartDate: start,
           utcEndDate: end,
+          utmSource: new Map(),
+          ref: new Map(),
         });
       }
 
@@ -95,8 +114,13 @@ export class AnalyticsRepository {
       increment(urlAggregation.region, analytics.region);
       increment(urlAggregation.city, analytics.city);
       increment(urlAggregation.timezone, analytics.timezone);
+
+      if (analytics.utmSource)
+        increment(urlAggregation.utmSource, analytics.utmSource);
+      if (analytics.ref) increment(urlAggregation.ref, analytics.ref);
     }
-    console.log("AGGREGATION MAP : ", aggregationMap);
+    // console.log("AGGREGATION MAP : ", aggregationMap);
+
 
     for (const [urlId, data] of aggregationMap) {
       await HourlyAggregatedAnalytics.create({
@@ -113,8 +137,13 @@ export class AnalyticsRepository {
         region: mapToObject(data.region),
         city: mapToObject(data.city),
         timezone: mapToObject(data.timezone),
+
+        utmSource: mapToObject(data.utmSource),
+        ref: mapToObject(data.ref),
       });
     }
+
+    logger.info(`Ending aggregating analytics for date range : ${start} - ${end}`);
   }
 
   async getAggregatedAnalyticsForDate(urlId: string, start: Date, end: Date) {
@@ -132,13 +161,17 @@ export class AnalyticsRepository {
   }
 
   async getTotalClicksForUrl(urlId: string) {
-    const analytics = await HourlyAggregatedAnalytics.find({ urlId });
+    // const analytics = await HourlyAggregatedAnalytics.aggregate([
+    //   { $match: { urlId: urlId } },
+    //   { $group: { _id: null, totalClicks: { $sum: "$clicks" } } },
+    // ]);
 
-    let totalClicks = 0;
-    for (const data of analytics) {
-      totalClicks += data.clicks;
-    }
+    const analytics = await HourlyAggregatedAnalytics.aggregate([
+      { $match: { urlId: new mongoose.Types.ObjectId(urlId) } },
+      { $group: { _id: null, totalClicks: { $sum: "$clicks" } } },
+    ]);
 
-    return totalClicks;
+
+    return analytics[0]?.totalClicks || 0;
   }
 }

@@ -67,7 +67,12 @@ export function EditLinkDialog({
         originalUrl: link.originalUrl,
         tags: link.tags ? link.tags.join(", ") : "",
         expirationDate: link.expirationDate
-          ? new Date(link.expirationDate).toISOString().split("T")[0]
+          ? (() => {
+              const d = new Date(link.expirationDate);
+              return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            })()
           : "",
       });
     }
@@ -77,9 +82,10 @@ export function EditLinkDialog({
     const tagsArray = values.tags
       ? values.tags.split(",").map((tag) => tag.trim())
       : [];
-    const expirationDate = values.expirationDate
-      ? new Date(values.expirationDate)
-      : undefined;
+    let expirationDate: Date | undefined = undefined;
+    if (values.expirationDate) {
+      expirationDate = new Date(values.expirationDate);
+    }
 
     updateLink.mutate(
       {
@@ -164,7 +170,7 @@ export function EditLinkDialog({
                     </span>
                   </FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="datetime-local" {...field} />
                   </FormControl>
                   <FormDescription>
                     The link will expire after this date.

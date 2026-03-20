@@ -12,3 +12,8 @@ export const getUTCRange = (date: string, timezone: string) => {
     utcEnd: end.toJSDate(),
   };
 };
+
+
+export const convertToUTCDate = (date: Date) => {
+  return DateTime.fromJSDate(date).toUTC().toJSDate();
+}

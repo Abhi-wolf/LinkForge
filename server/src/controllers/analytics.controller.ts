@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { loggedInUserProcedure } from "../routers/trpc/context";
+import {
+  loggedInUserProcedure,
+  publicProcedure,
+} from "../routers/trpc/context";
 import logger from "../config/logger.config";
 import { AnalyticsService } from "../services/analytics.service";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
@@ -12,22 +15,20 @@ const analyticsService = new AnalyticsService(
 );
 
 export const analyticsController = {
-  getAnalytics: loggedInUserProcedure
+  getAnalytics: publicProcedure
     .input(
       z.object({
-        urlId: z.string().min(1, "URL ID is required"),
-        startDate: z.string().min(1, "Start date is required"),
-        endDate: z.string().min(1, "End date is required"),
-        timezone: z.string().min(1, "Timezone is required"),
+        urlId: z.string().min(24, "URL ID is required"),
+        startDate: z.coerce.date(), // ✅ converts ISO string → Date
+        endDate: z.coerce.date(), // ✅ converts ISO string → Date
       }),
     )
     .query(async ({ input }) => {
       try {
-        const result = await analyticsService.getAggregatedAnalyticsForDate(
+        const result = await analyticsService.getAnalyticsForUrlId(
           input.urlId,
           input.startDate,
           input.endDate,
-          input.timezone,
         );
         return result;
       } catch (error) {

@@ -1,11 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useTRPC } from "@/services/trpc";
 
-/** Fetch all links for the authenticated user. */
-export function useLinks() {
+/** Fetch all links for the authenticated user with optional filters and pagination. */
+export function useLinks(options?: {
+  search?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  startExpireDate?: Date;
+  endExpireDate?: Date;
+  limit?: number;
+  offset?: number;
+}) {
   const trpc = useTRPC();
 
-  return useQuery(trpc.url.getAllUrlsOfUser.queryOptions());
+  return useQuery({
+    ...trpc.url.getAllUrlsOfUser.queryOptions(options),
+    placeholderData: keepPreviousData,
+  });
 }
 
 /** Mutation: create a new short link. Invalidates ['links'] on success. */

@@ -1,5 +1,6 @@
 // This file contains all the basic configuration logic for the app server to work
 import dotenv from "dotenv";
+import logger from "./logger.config";
 
 type ServerConfig = {
   PORT: number;
@@ -18,7 +19,7 @@ type ServerConfig = {
 
 function loadEnv() {
   dotenv.config();
-  console.log(`Environment variables loaded`);
+  logger.info(`Environment variables loaded`);
 }
 
 loadEnv();
@@ -35,7 +36,7 @@ export const serverConfig: ServerConfig = {
     "aggregation_analytics_scheduler",
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || "access_secret_123",
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh_secret_123",
-  ACCESS_TOKEN_EXPIRE: process.env.ACCESS_TOKEN_EXPIRE || "15m",
+  ACCESS_TOKEN_EXPIRE: process.env.ACCESS_TOKEN_EXPIRE || "60m",
   REFRESH_TOKEN_EXPIRE: process.env.REFRESH_TOKEN_EXPIRE || "7d",
   URL_EXPIRY_SCHEDULER:
     process.env.URL_EXPIRY_SCHEDULER || "url_expiry_scheduler",

@@ -3,6 +3,7 @@ import logger from "../config/logger.config";
 import { analyticsQueue } from "../queues/analytics.queue";
 
 export interface IAnalyticsJob {
+  urlId: string;
   shortUrl: string;
   os: string;
   browser: string;
@@ -13,6 +14,8 @@ export interface IAnalyticsJob {
   timezone: string;
   utcDate: string;
   correlationId?: string;
+  utmSource?: string;
+  ref?: string;
 }
 
 export async function addAnalyticsJob(

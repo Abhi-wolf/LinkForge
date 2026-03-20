@@ -5,14 +5,14 @@ import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import { UrlRepository } from "../repositories/url.repository";
 import { toBase62 } from "../utils/base62";
-import { ForbiddenError, NotFoundError } from "../utils/errors/app.error";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../utils/errors/app.error";
 
 export class UrlService {
   constructor(
     private readonly urlRepository: UrlRepository,
     private readonly cacheRepository: CacheRepository,
     private readonly analyticsRepository: AnalyticsRepository,
-  ) {}
+  ) { }
 
   async createShortUrl(urlData: CreateUrlDto, userId?: string) {
     let shortUrl: string;
@@ -41,7 +41,13 @@ export class UrlService {
       break;
     }
 
-    await this.cacheRepository.setUrlMapping(shortUrl, urlData.originalUrl);
+    await this.cacheRepository.setUrlMapping({
+      shortUrl: url.shortUrl,
+      originalUrl: url.originalUrl,
+      urlId: url._id?.toString(),
+      status: url.status,
+      expirationDate: url.expirationDate?.toISOString() ?? "",
+    });
 
     const baseUrl = serverConfig.BASE_URL;
     const fullUrl = `${baseUrl}/${shortUrl}`;
@@ -60,13 +66,24 @@ export class UrlService {
   }
 
   async getOriginalUrl(shortUrl: string) {
-    const originalUrl = await this.cacheRepository.getUrlMapping(shortUrl);
+    const cacheData = await this.cacheRepository.getUrlMapping(shortUrl);
 
-    if (originalUrl) {
-      // await this.urlRepository.incrementClicks(shortUrl);
+    if (cacheData) {
+
+      if (cacheData.status && cacheData.status !== UrlStatus.ACTIVE) {
+        throw new NotFoundError("Url not found");
+      }
+
+      // if(cacheData.expirationDate && new Date(cacheData.expirationDate) < new Date()){
+      //   throw new NotFoundError("Url not found");
+      // }
+
       return {
-        originalUrl,
+        originalUrl: cacheData.originalUrl,
         shortUrl,
+        urlId: cacheData.urlId,
+        status: cacheData.status,
+        expirationDate: cacheData.expirationDate,
       };
     }
 
@@ -79,24 +96,41 @@ export class UrlService {
     if (url.status !== UrlStatus.ACTIVE) {
       throw new NotFoundError("Url not found");
     }
-    await this.cacheRepository.setUrlMapping(shortUrl, url.originalUrl);
+    await this.cacheRepository.setUrlMapping({
+      shortUrl: url.shortUrl,
+      originalUrl: url.originalUrl,
+      urlId: url._id?.toString(),
+      status: url.status,
+      expirationDate: url.expirationDate?.toISOString() ?? "",
+    });
 
     return {
       originalUrl: url.originalUrl,
       shortUrl: url.shortUrl,
+      urlId: url._id?.toString(),
+      status: url.status,
+      expirationDate: url.expirationDate,
     };
   }
 
-  async incrementClicks(shortUrl: string) {
-    await this.urlRepository.incrementClicks(shortUrl);
-    return;
-  }
+  async getAllUrlsOfUser(userId: string, options: {
+    search?: string;
+    status?: UrlStatus;
+    startDate?: Date;
+    endDate?: Date;
+    startExpireDate?: Date;
+    endExpireDate?: Date;
+    limit?: number;
+    offset?: number;
+  }) {
+    const [urls, total] = await Promise.all([
+      this.urlRepository.getUrlsOfUser(userId, options),
+      this.urlRepository.countUrlsOfUser(userId, options),
+    ]);
 
-  async getAllUrlsOfUser(userId: string) {
-    const urls = await this.urlRepository.getUrlsOfUser(userId);
     const baseUrl = serverConfig.BASE_URL;
 
-    return urls.map((url) => {
+    const formattedUrls = urls.map((url) => {
       return {
         id: url._id?.toString(),
         originalUrl: url.originalUrl,
@@ -109,10 +143,15 @@ export class UrlService {
         updatedAt: url.updatedAt,
       };
     });
+
+    return {
+      urls: formattedUrls,
+      total,
+    };
   }
 
   async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
-    console.log("Updating URL with data:", { id, data, userId });
+    // console.log("Updating URL with data:", { id, data, userId });
 
     if (data.shortUrl) {
       throw new ForbiddenError("Short URL cannot be updated");
@@ -132,6 +171,14 @@ export class UrlService {
       throw new NotFoundError("Url not found");
     }
 
+    if (data.expirationDate && new Date(data.expirationDate) < new Date()) {
+      throw new BadRequestError("Expiration date cannot be in the past");
+    }
+
+    if (data.status === UrlStatus.ACTIVE && existingUrl.status === UrlStatus.EXPIRED) {
+      throw new BadRequestError("Expired URL cannot be activated");
+    }
+
     const updatedUrl = await this.urlRepository.updateUrl(id, data);
 
     if (!updatedUrl) {
@@ -142,10 +189,13 @@ export class UrlService {
     if (updatedUrl.status !== UrlStatus.ACTIVE) {
       await this.cacheRepository.deleteUrlMapping(updatedUrl.shortUrl);
     } else if (data.originalUrl) {
-      await this.cacheRepository.setUrlMapping(
-        updatedUrl.shortUrl,
-        data.originalUrl,
-      );
+      await this.cacheRepository.setUrlMapping({
+        shortUrl: updatedUrl.shortUrl,
+        originalUrl: updatedUrl.originalUrl,
+        urlId: updatedUrl._id?.toString(),
+        status: updatedUrl.status,
+        expirationDate: updatedUrl.expirationDate?.toISOString() ?? "",
+      });
     }
 
     return {

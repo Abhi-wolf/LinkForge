@@ -19,6 +19,7 @@ export type ShortLink = {
     clicks: number;
     status: string;
     tags?: string[];
+    fullUrl: string;
 };
 
 export type AnalyticsFilter = 'Day' | 'Month' | 'Year';
@@ -30,6 +31,8 @@ export type AnalyticsData = {
     browserData: { name: string; value: number }[];
     countryData: { country: string; clicks: number; percentage: number }[];
     regionData: { name: string; value: number }[];
+    utmSourceData: { name: string; value: number }[];
+    referrerData: { name: string; value: number }[];
 };
 
 // Initial Mock Data
@@ -156,6 +159,20 @@ api.interceptors.request.use(async (config) => {
                 { name: 'Europe', value: 35 },
                 { name: 'Asia', value: 15 },
                 { name: 'Others', value: 5 },
+            ],
+            utmSourceData: [
+                { name: 'Twitter', value: 35 },
+                { name: 'Google', value: 30 },
+                { name: 'Direct', value: 20 },
+                { name: 'LinkedIn', value: 10 },
+                { name: 'Newsletter', value: 5 },
+            ],
+            referrerData: [
+                { name: 't.co', value: 35 },
+                { name: 'google.com', value: 30 },
+                { name: 'direct', value: 20 },
+                { name: 'linkedin.com', value: 10 },
+                { name: 'github.com', value: 5 },
             ]
         };
 

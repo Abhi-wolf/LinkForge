@@ -40,17 +40,19 @@ export default function Login() {
   const navigate = useNavigate();
   const { mutate: loginUser } = useLogin();
   const setLogin = useAuthStore((state) => state.login);
+
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "hello@email.com", password: "Hello@123" },
+    defaultValues: { email: "hello@email.com", password: "hello@123" },
   });
 
   const onSubmit = async (values: LoginValues) => {
     setIsLoading(true);
     loginUser(values, {
       onSuccess: (data) => {
+        console.log("Login data:", data);
         setLogin(data);
         toast.success("Logged in successfully!");
         navigate("/dashboard");

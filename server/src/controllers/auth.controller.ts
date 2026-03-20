@@ -22,7 +22,6 @@ export const authController = {
     )
     .mutation(async ({ input }) => {
       try {
-        logger.info("Registering user");
         const result = await authService.register(input);
         logger.info("User registered", result);
         return result;
@@ -48,15 +47,10 @@ export const authController = {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          maxAge: 5 * 1000, //  1 day
         });
 
-        ctx.res.cookie("refreshToken", result.refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+
         return result;
       } catch (error) {
         logger.error(`Error logging user: ${error}`);
@@ -70,10 +64,19 @@ export const authController = {
         refreshToken: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
-        const result = await authService.login(input);
-        return result;
+        const tokens = await authService.refreshTokens(input.refreshToken);
+
+        ctx.res.cookie("accessToken", tokens.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 5 * 1000, //  1day
+        });
+
+        logger.info(`Token refreshed for user ${tokens.userId}`)
+        return tokens;
       } catch (error) {
         logger.error(`Error refreshing token: ${error}`);
         handleAppError(error);
@@ -83,15 +86,38 @@ export const authController = {
   logout: loggedInUserProcedure.mutation(async ({ ctx }) => {
     try {
       await authService.logout(ctx.user!.userId);
+      logger.info(`User ${ctx.user!.userId} logged out`);
+      ctx.res.clearCookie("accessToken");
     } catch (error) {
       logger.error(`Error logging out user: ${error}`);
       handleAppError(error);
     }
   }),
 
+
+  updateUser: loggedInUserProcedure
+    .input(
+      z.object({
+        name: z.string().min(2).optional(),
+        password: z.string().min(6).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const updatedUser = await authService.updateUser(ctx.user!.userId, input);
+        logger.info(`User ${ctx.user!.userId} updated`);
+        return updatedUser;
+      } catch (error) {
+        logger.error(`Error updating user: ${error}`);
+        handleAppError(error);
+      }
+    }),
+
+
   me: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
-      await authService.getUserById(ctx.user!.userId);
+      const user = await authService.getUserById(ctx.user!.userId);
+      return user;
     } catch (error) {
       logger.error(`Error fetching user profile: ${error}`);
       handleAppError(error);

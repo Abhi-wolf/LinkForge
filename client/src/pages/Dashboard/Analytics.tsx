@@ -1,23 +1,20 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    LineChart, Line, PieChart, Pie, Cell, BarChart, Bar,
+    AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Calendar, Copy, Trash2, QrCode as QrCodeIcon, ArrowLeft } from 'lucide-react';
+import { Calendar, Copy, Trash2, QrCode as QrCodeIcon, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 
-import type { AnalyticsFilter } from '@/services/mockApi';
 import { linkService } from '@/services/linkService';
-import { useLinks } from '@/hooks/useLinks';
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalyticsForUrlId, useDashboardAnalytics } from '@/hooks/useAnalytics';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ef4444'];
@@ -25,15 +22,52 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ef4444'
 export default function Analytics() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [filter, setFilter] = useState<AnalyticsFilter>('Day');
 
-    const { data: links, isLoading: linksLoading } = useLinks();
-    const { data: analytics, isLoading: analyticsLoading } = useAnalytics(id, filter);
+    // Internal state for the date picker inputs
+    const [dateRange, setDateRange] = useState({
+        from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        to: new Date()
+    });
 
-    const link = links?.find(l => l.id === id);
-    const isLoading = linksLoading || analyticsLoading;
+    // State for the dates actually used in the fetch
+    const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
 
-    if (isLoading || !analytics) {
+
+    const { data: analyticsResponse, isLoading: analyticsLoading } = useAnalyticsForUrlId(
+        id!,
+        appliedDateRange.from,
+        appliedDateRange.to
+    );
+
+    const handleFetch = () => {
+        setAppliedDateRange(dateRange);
+    };
+
+    // Use urlDesc from backend response
+    const link = analyticsResponse?.urlDesc;
+
+    const isLoading = analyticsLoading;
+    const isLinkNotFound = !analyticsLoading && !link;
+
+    // Map backend data to UI format
+    const analytics = analyticsResponse?.analyticsNumbers ? {
+        totalClicks: analyticsResponse.analyticsNumbers.clicks,
+        chartData: analyticsResponse.analyticsNumbers.clicksPerDay,
+        deviceData: analyticsResponse.analyticsNumbers.device.map(d => ({ name: d.key, value: d.value })),
+        browserData: analyticsResponse.analyticsNumbers.browser.map(b => ({ name: b.key, value: b.value })),
+        countryData: analyticsResponse.analyticsNumbers.country.map(c => ({
+            country: c.key,
+            clicks: c.value,
+            percentage: analyticsResponse.analyticsNumbers.clicks > 0
+                ? Math.round((c.value / analyticsResponse.analyticsNumbers.clicks) * 100)
+                : 0
+        })),
+        regionData: analyticsResponse.analyticsNumbers.region.map(r => ({ name: r.key, value: r.value })),
+        utmSourceData: analyticsResponse.analyticsNumbers.utmSource.map(u => ({ name: u.key, value: u.value })),
+        referrerData: analyticsResponse.analyticsNumbers.ref.map(r => ({ name: r.key, value: r.value }))
+    } : null;
+
+    if (!analytics) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center gap-4 border-b pb-4">
@@ -53,11 +87,17 @@ export default function Analytics() {
         );
     }
 
-    if (!link) {
+    if (isLinkNotFound) {
         return (
-            <div className="flex flex-col items-center justify-center h-[50vh]">
-                <h2 className="text-2xl font-bold mb-2">Link not found</h2>
-                <Button variant="link" onClick={() => navigate('/dashboard/links')}>Return to My Links</Button>
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+                <div className="p-6 rounded-full bg-muted/50">
+                    <ShieldAlert className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold">Link not found</h2>
+                    <p className="text-muted-foreground">The link you're looking for might have been deleted or is not available.</p>
+                </div>
+                <Button variant="outline" onClick={() => navigate('/dashboard/links')}>Return to My Links</Button>
             </div>
         );
     }
@@ -72,18 +112,18 @@ export default function Analytics() {
                     </Button>
                     <div className="space-y-2">
                         <h1 className="text-2xl font-bold tracking-tight break-all">
-                            {link.shortUrl}
+                            {link?.fullUrl}
                         </h1>
                         <p className="text-muted-foreground flex items-center gap-2 truncate max-w-xl">
-                            Original: <a href={link.originalUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">{link.originalUrl}</a>
+                            Original: <a href={link?.originalUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">{link?.originalUrl}</a>
                         </p>
                         <div className="flex items-center gap-3 pt-2">
                             <Badge variant="outline" className="gap-1.5 px-3 py-1">
                                 <Calendar className="h-3.5 w-3.5" />
                                 {new Date(link.createdAt).toLocaleDateString()}
                             </Badge>
-                            <Badge variant={link.status === 'Active' ? 'default' : 'secondary'} className={link.status === 'Active' ? 'bg-green-500' : ''}>
-                                {link.status}
+                            <Badge variant={link?.status === 'active' ? 'default' : 'secondary'} className={link.status === 'active' ? 'bg-green-500' : ''}>
+                                {link?.status}
                             </Badge>
                         </div>
                     </div>
@@ -91,7 +131,7 @@ export default function Analytics() {
 
                 <div className="flex flex-wrap items-center gap-2 select-none">
                     <Button variant="outline" className="gap-2" onClick={() => {
-                        navigator.clipboard.writeText(link.shortUrl);
+                        navigator.clipboard.writeText(link?.fullUrl);
                         toast.success('Copied to clipboard!');
                     }}>
                         <Copy className="h-4 w-4" /> Copy
@@ -106,10 +146,10 @@ export default function Analytics() {
                         <DialogContent className="sm:max-w-md flex flex-col items-center justify-center p-8">
                             <DialogHeader className="mb-4">
                                 <DialogTitle className="text-center">QR Code</DialogTitle>
-                                <DialogDescription>Scan to visit {link.alias}</DialogDescription>
+                                <DialogDescription>Scan to visit {link.fullUrl}</DialogDescription>
                             </DialogHeader>
                             <div className="bg-white p-4 rounded-xl shadow-sm border">
-                                <QRCodeSVG value={link.shortUrl} size={200} />
+                                <QRCodeSVG value={link.fullUrl} size={200} />
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -128,18 +168,39 @@ export default function Analytics() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold">Analytics Overview</h2>
-                    <p className="text-sm text-muted-foreground">Showing data filtered by selected time range</p>
+                    <p className="text-sm text-muted-foreground">Showing data filtered by selected date range</p>
                 </div>
-                <Select value={filter} onValueChange={(val: AnalyticsFilter) => setFilter(val)}>
-                    <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Select filter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="Day">Past 24 Hours</SelectItem>
-                        <SelectItem value="Month">Past 30 Days</SelectItem>
-                        <SelectItem value="Year">Past Year</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-background border rounded-lg px-3 py-1 text-sm shadow-sm">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold px-1">From</span>
+                            <input
+                                type="date"
+                                className="bg-transparent border-none focus:ring-0 text-sm h-7"
+                                value={dateRange.from.toISOString().split('T')[0]}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, from: new Date(e.target.value) }))}
+                            />
+                        </div>
+                        <div className="w-px h-8 bg-border mx-1" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold px-1">To</span>
+                            <input
+                                type="date"
+                                className="bg-transparent border-none focus:ring-0 text-sm h-7"
+                                value={dateRange.to.toISOString().split('T')[0]}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, to: new Date(e.target.value) }))}
+                            />
+                        </div>
+                    </div>
+                    <Button
+                        size="sm"
+                        onClick={handleFetch}
+                        className="h-10 px-4 rounded-lg shadow-sm"
+                        disabled={analyticsLoading}
+                    >
+                        {analyticsLoading ? 'Fetching...' : 'Fetch Data'}
+                    </Button>
+                </div>
             </div>
 
             {/* Charts Grid */}
@@ -154,13 +215,51 @@ export default function Analytics() {
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={analytics.chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                <XAxis dataKey="date" className="text-xs" stroke="#888888" />
-                                <YAxis className="text-xs" stroke="#888888" tickFormatter={(v) => `${v}`} />
-                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                <Line type="monotone" dataKey="clicks" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                            </LineChart>
+                            <AreaChart data={analytics.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/50" />
+                                <XAxis
+                                    dataKey="date"
+                                    className="text-xs"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(str) => {
+                                        const date = new Date(str);
+                                        return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+                                    }}
+                                    minTickGap={30}
+                                />
+                                <YAxis
+                                    className="text-xs"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(v) => `${v}`}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: '12px',
+                                        border: '1px solid hsl(var(--border))',
+                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                        backgroundColor: 'hsl(var(--background))'
+                                    }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="clicks"
+                                    stroke="hsl(var(--primary))"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorClicks)"
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
@@ -203,10 +302,10 @@ export default function Analytics() {
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={analytics.browserData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-muted" />
-                                <XAxis type="number" className="text-xs" stroke="#888888" />
-                                <YAxis dataKey="name" type="category" className="text-xs" stroke="#888888" width={80} />
-                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-muted/50" />
+                                <XAxis type="number" className="text-xs" stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                                <YAxis dataKey="name" type="category" className="text-xs" stroke="hsl(var(--muted-foreground))" width={80} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
                                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30}>
                                     {analytics.browserData.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -241,6 +340,57 @@ export default function Analytics() {
                                 </Pie>
                                 <Tooltip />
                             </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* UTM Source Pie Chart */}
+                <Card className="shadow-sm rounded-xl">
+                    <CardHeader>
+                        <CardTitle>Sources (UTM)</CardTitle>
+                        <CardDescription>Clicks by campaign source</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={analytics.utmSourceData}
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                    labelLine={false}
+                                >
+                                    {analytics.utmSourceData.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* Referrer Bar Chart */}
+                <Card className="shadow-sm rounded-xl lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Referrers</CardTitle>
+                        <CardDescription>Top referring domains</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={analytics.referrerData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-muted/50" />
+                                <XAxis type="number" className="text-xs" stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
+                                <YAxis dataKey="name" type="category" className="text-xs" stroke="hsl(var(--muted-foreground))" width={80} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={30}>
+                                    {analytics.referrerData.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>

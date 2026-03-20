@@ -15,4 +15,5 @@ export type ShortLink = {
   clicks: number;
   status: string;
   tags?: string[];
+  fullUrl: string;
 };

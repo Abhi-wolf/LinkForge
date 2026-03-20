@@ -8,4 +8,6 @@ export interface CreateRawAnalyticsDto {
   city: string;
   timezone: string;
   utcDate: string;
+  utmSource?: string;
+  ref?: string;
 }

@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
 
-import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import { useGetMe, useUpdateUser } from "@/hooks/useAuth";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -31,9 +31,6 @@ const profileSchema = z.object({
 
 const passwordSchema = z
   .object({
-    currentPassword: z
-      .string()
-      .min(6, "Password must be at least 6 characters"),
     newPassword: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
   })
@@ -43,7 +40,9 @@ const passwordSchema = z
   });
 
 export default function Settings() {
-  const user = useAuthStore((state) => state.user);
+  // const user = useAuthStore((state) => state.user);
+  const { data: user } = useGetMe();
+  const updateUser = useUpdateUser();
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -56,20 +55,38 @@ export default function Settings() {
   const passwordForm = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
-      currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     },
   });
 
   function onProfileSubmit(values: z.infer<typeof profileSchema>) {
-    toast.success("Profile updated successfully (Mocked)");
-    console.log(values);
+    updateUser.mutate(values, {
+      onSuccess: () => {
+        toast.success("Profile updated successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   }
 
   function onPasswordSubmit(_values: z.infer<typeof passwordSchema>) {
-    toast.success("Password changed successfully (Mocked)");
-    passwordForm.reset();
+
+    if (_values.confirmPassword !== _values.newPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    updateUser.mutate({ password: _values.newPassword }, {
+      onSuccess: () => {
+        toast.success("Password changed successfully");
+        passwordForm.reset();
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    })
   }
 
   return (
@@ -150,23 +167,6 @@ export default function Settings() {
                 onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
                 className="space-y-4"
               >
-                <FormField
-                  control={passwordForm.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={passwordForm.control}
                   name="newPassword"

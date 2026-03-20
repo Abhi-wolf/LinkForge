@@ -10,6 +10,8 @@ export interface IRawAnalyticsModel extends Document {
   city: string;
   timezone: string;
   utcDate: Date;
+  utmSource?: string;
+  ref?: string;
 }
 
 export interface IHourlyAggregatedAnalyticsModel extends Document {
@@ -24,6 +26,8 @@ export interface IHourlyAggregatedAnalyticsModel extends Document {
   timezone: Map<string, number>;
   utcStartDate: Date;
   utcEndDate: Date;
+  utmSource: Map<string, number>;
+  ref: Map<string, number>;
 }
 
 const rawAnalyticsSchema = new mongoose.Schema<IRawAnalyticsModel>(
@@ -63,6 +67,14 @@ const rawAnalyticsSchema = new mongoose.Schema<IRawAnalyticsModel>(
     utcDate: {
       type: Date,
       default: Date.now,
+    },
+    utmSource: {
+      type: String,
+      default: "unknown",
+    },
+    ref: {
+      type: String,
+      default: "unknown",
     },
   },
   {
@@ -132,6 +144,16 @@ const hourlyAggregatedAnalyticsSchema =
       utcEndDate: {
         type: Date,
         required: true,
+      },
+      utmSource: {
+        type: Map,
+        of: Number,
+        default: {},
+      },
+      ref: {
+        type: Map,
+        of: Number,
+        default: {},
       },
     },
     {

@@ -13,11 +13,19 @@ export class UserRepository {
     return await User.findById(id);
   }
 
-  async incrementTokenVersion(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, { $inc: { tokenVersion: 1 } });
+  async incrementTokenVersion(id: string): Promise<IUser | null> {
+    return await User.findByIdAndUpdate(
+      id,
+      { $inc: { tokenVersion: 1 } },
+      { new: true }
+    );
   }
 
   async getUserById(id: string): Promise<IUser | null> {
     return await User.findById(id);
+  }
+
+  async update(id: string, data: Partial<IUser>): Promise<IUser | null> {
+    return await User.findByIdAndUpdate(id, data, { new: true });
   }
 }

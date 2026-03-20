@@ -16,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { PublicHeader } from '@/components/layout/PublicHeader';
 
 import { linkService } from '@/services/linkService';
-import type { ShortLink } from '@/services/mockApi';
+import type { ShortLink } from '@/types/url.types';
+
 
 const formSchema = z.object({
     url: z.string().url("Please enter a valid URL (e.g., https://example.com)"),
@@ -53,7 +54,7 @@ export default function LandingPage() {
 
     const copyToClipboard = () => {
         if (generatedLink) {
-            navigator.clipboard.writeText(generatedLink.shortUrl);
+            navigator.clipboard.writeText(generatedLink.fullUrl);
             toast.success("Copied to clipboard!");
         }
     };
@@ -125,7 +126,7 @@ export default function LandingPage() {
                                 <div className="space-y-6 p-6">
                                     <div className="flex flex-col md:flex-row items-center justify-center gap-8">
                                         <div className="bg-white p-4 rounded-3xl shadow-sm border transform hover:scale-105 transition-transform duration-300">
-                                            <QRCodeSVG value={generatedLink.shortUrl} size={160} />
+                                            <QRCodeSVG value={generatedLink.fullUrl} size={160} />
                                         </div>
                                         <div className="flex flex-col gap-4 w-full flex-1">
                                             <div className="space-y-2">
@@ -133,7 +134,7 @@ export default function LandingPage() {
                                                 <div className="flex items-center gap-2">
                                                     <Input
                                                         readOnly
-                                                        value={generatedLink.shortUrl}
+                                                        value={generatedLink.fullUrl}
                                                         className="h-14 font-mono text-lg bg-muted/50 border-input shadow-inner focus-visible:ring-0"
                                                     />
                                                     <Button size="icon" className="h-14 w-14 rounded-xl shrink-0 transition-transform active:scale-95" onClick={copyToClipboard}>

@@ -25,6 +25,7 @@ import type { AppRouter } from "../../server/src/routers/trpc";
 import { TRPCProvider } from "./services/trpc";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { serverConfig } from "./services/config";
+import { refreshTokenFunc } from "./services/refreshTokenService";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -108,21 +109,44 @@ const router = createBrowserRouter([
 
 function App() {
   const queryClient = getQueryClient();
-  const accessToken = useAuthStore((state) => state.accessToken);
-  console.log("Access token in App component:", accessToken);
 
   const [trpcClient] = useState(() =>
     createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
           url: serverConfig.VITE_TRPC_URL,
-          // headers() {
-          //   return {
-          //     Authorization: accessToken ?? undefined,
-          //   };
-          // },
-          fetch: (url, options) =>
-            fetch(url, { ...options, credentials: "include" }),
+          fetch: async (url, options) => {
+            const res = await fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+
+            if (res.status === 401) {
+              const { refreshToken, setRefreshToken } = useAuthStore.getState();
+
+              // console.log("Unauthorized request", refreshToken);
+              if (!refreshToken) {
+                // console.error("No refresh token");
+                return res;
+              }
+
+              const response = await refreshTokenFunc(refreshToken);
+              console.log("Refresh response", response);
+              if (response.success) {
+                setRefreshToken(response.refreshToken);
+                return fetch(url, {
+                  ...options,
+                  credentials: "include",
+                });
+              } else {
+                // ✅ Refresh failed — redirect to login
+                window.location.href = "/login";
+                console.error("Refresh failed");
+                return res;
+              }
+            }
+            return res;
+          },
         }),
       ],
     }),

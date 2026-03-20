@@ -114,16 +114,28 @@ export const urlController = {
       }
     }),
 
-  getAllUrlsOfUser: loggedInUserProcedure.query(async ({ ctx }) => {
-    try {
-      console.info("Fetching URLs for user = ", ctx.user!.userId);
-      const urls = await urlService.getAllUrlsOfUser(ctx.user!.userId);
-      return urls;
-    } catch (error) {
-      logger.error(`Error fetching URLs for user : ${error}`);
-      handleAppError(error);
-    }
-  }),
+  getAllUrlsOfUser: loggedInUserProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        status: z.nativeEnum(UrlStatus).optional(),
+        startDate: z.coerce.date().optional(),
+        endDate: z.coerce.date().optional(),
+        startExpireDate: z.coerce.date().optional(),
+        endExpireDate: z.coerce.date().optional(),
+        limit: z.number().int().min(1).optional(),
+        offset: z.number().int().min(0).optional(),
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        const urls = await urlService.getAllUrlsOfUser(ctx.user!.userId, input || {});
+        return urls;
+      } catch (error) {
+        logger.error(`Error fetching URLs for user : ${error}`);
+        handleAppError(error);
+      }
+    }),
 };
 
 export async function redirectUrl(req: Request, res: Response) {
@@ -163,14 +175,25 @@ export async function redirectUrl(req: Request, res: Response) {
     return;
   }
 
+  const utmSource = (req.query.utm_source as string) || "unknown";
+
+  const ref =
+    (req.query.ref as string) ||
+    (req.headers.referer as string) ||
+    (req.headers.referrer as string) ||
+    "direct";
+
   const analyticsData: IAnalyticsJob = {
+    urlId: url.urlId,
     shortUrl: shortUrl,
+    utmSource,
+    ref,
     os: result.os.name || "Linux",
     browser: result.browser.name || "Chrome",
     device: result.device.type || "desktop",
     utcDate: new Date().toISOString(),
-    ...location,
     correlationId: getCorrelationId(),
+    ...location,
   };
 
   await addAnalyticsJob(analyticsData);
@@ -183,16 +206,16 @@ export async function getAnalyticsForUrlId(req: Request, res: Response) {
   const { urlId } = req.params;
   const { startDate, endDate, timezone } = req.query;
 
-  console.log(
-    "URL ID : ",
-    urlId,
-    " START DATE : ",
-    startDate,
-    " END DATE : ",
-    endDate,
-    " TIMEZONE : ",
-    timezone,
-  );
+  // console.log(
+  //   "URL ID : ",
+  //   urlId,
+  //   " START DATE : ",
+  //   startDate,
+  //   " END DATE : ",
+  //   endDate,
+  //   " TIMEZONE : ",
+  //   timezone,
+  // );
 
   if (
     typeof startDate !== "string" ||

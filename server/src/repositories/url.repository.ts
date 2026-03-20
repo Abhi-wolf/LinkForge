@@ -4,7 +4,7 @@ export interface CreateUrl {
   originalUrl: string;
   shortUrl: string;
   tags?: string[];
-  expirationDate?: Date;
+  expirationDate?: Date | null;
   userId?: string;
 }
 
@@ -104,9 +104,87 @@ export class UrlRepository {
     };
   }
 
-  async getUrlsOfUser(userId: string) {
-    const urls = await Url.find({ userId, status: { $ne: UrlStatus.DELETED } });
+  async getUrlsOfUser(userId: string, options: {
+    search?: string;
+    status?: UrlStatus;
+    startDate?: Date;
+    endDate?: Date;
+    startExpireDate?: Date;
+    endExpireDate?: Date;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const query: any = { userId, status: { $ne: UrlStatus.DELETED } };
 
-    return urls;
+    if (options.search) {
+      query.$or = [
+        { originalUrl: { $regex: options.search, $options: "i" } },
+        { shortUrl: { $regex: options.search, $options: "i" } },
+      ];
+    }
+
+    if (options.status) {
+      query.status = options.status;
+    }
+
+    if (options.startDate || options.endDate) {
+      query.createdAt = {};
+      if (options.startDate) query.createdAt.$gte = options.startDate;
+      if (options.endDate) query.createdAt.$lte = options.endDate;
+    }
+
+    if (options.startExpireDate || options.endExpireDate) {
+      query.expirationDate = {};
+      if (options.startExpireDate) query.expirationDate.$gte = options.startExpireDate;
+      if (options.endExpireDate) query.expirationDate.$lte = options.endExpireDate;
+    }
+
+    const q = Url.find(query).sort({ createdAt: -1 });
+
+    if (options.limit !== undefined) {
+      q.limit(options.limit);
+    }
+
+    if (options.offset !== undefined) {
+      q.skip(options.offset);
+    }
+
+    return await q.exec();
+  }
+
+  async countUrlsOfUser(userId: string, options: {
+    search?: string;
+    status?: UrlStatus;
+    startDate?: Date;
+    endDate?: Date;
+    startExpireDate?: Date;
+    endExpireDate?: Date;
+  } = {}) {
+    const query: any = { userId, status: { $ne: UrlStatus.DELETED } };
+
+    if (options.search) {
+      query.$or = [
+        { originalUrl: { $regex: options.search, $options: "i" } },
+        { shortUrl: { $regex: options.search, $options: "i" } },
+      ];
+    }
+
+    if (options.status) {
+      query.status = options.status;
+    }
+
+    if (options.startDate || options.endDate) {
+      query.createdAt = {};
+      if (options.startDate) query.createdAt.$gte = options.startDate;
+      if (options.endDate) query.createdAt.$lte = options.endDate;
+    }
+
+    if (options.startExpireDate || options.endExpireDate) {
+      query.expirationDate = {};
+      if (options.startExpireDate) query.expirationDate.$gte = options.startExpireDate;
+      if (options.endExpireDate) query.expirationDate.$lte = options.endExpireDate;
+    }
+
+    return await Url.countDocuments(query);
   }
 }

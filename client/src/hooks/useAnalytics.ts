@@ -37,3 +37,15 @@ export function useDashboardAnalytics() {
 
   return useQuery(trpc.analytics.getDashboardAnalytics.queryOptions());
 }
+
+export function useAnalyticsForUrlId(
+  urlId: string,
+  startDate: Date,
+  endDate: Date,
+) {
+  const trpc = useTRPC();
+
+  return useQuery(
+    trpc.analytics.getAnalytics.queryOptions({ urlId, startDate, endDate }),
+  );
+}

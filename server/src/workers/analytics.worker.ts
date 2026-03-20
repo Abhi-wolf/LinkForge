@@ -20,7 +20,7 @@ async function setUpAnalyticsWorker() {
         { correlationId: job.data.correlationId },
         async () => {
           logger.info(`Processing analytics job ${job.id}`);
-
+          // console.log("JOB DATA : ", job.data);
           try {
             await analyticsService.createRawAnalytics(job.data);
             logger.info(`Analytics job ${job.id} completed successfully`);

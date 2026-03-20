@@ -55,9 +55,10 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
     const tagsArray = values.tags
       ? values.tags.split(",").map((tag) => tag.trim())
       : [];
-    const expirationDate = values.expirationDate
-      ? new Date(values.expirationDate)
-      : undefined;
+    let expirationDate: Date | undefined = undefined;
+    if (values.expirationDate) {
+      expirationDate = new Date(values.expirationDate);
+    }
 
     createLink.mutate(
       {
@@ -150,7 +151,7 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
                     </span>
                   </FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="datetime-local" {...field} />
                   </FormControl>
                   <FormDescription>
                     The link will expire after this date.
