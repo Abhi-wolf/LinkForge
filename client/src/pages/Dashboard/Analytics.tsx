@@ -8,8 +8,7 @@ import { Calendar, Copy, Trash2, QrCode as QrCodeIcon, ArrowLeft, ShieldAlert } 
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 
-import { linkService } from '@/services/linkService';
-import { useAnalyticsForUrlId, useDashboardAnalytics } from '@/hooks/useAnalytics';
+import { useAnalyticsForUrlId } from '@/hooks/useAnalytics';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -155,7 +154,6 @@ export default function Analytics() {
                     </Dialog>
 
                     <Button variant="destructive" className="gap-2" onClick={() => {
-                        linkService.deleteLink(link.id);
                         toast.success('Link deleted');
                         navigate('/dashboard/links');
                     }}>

@@ -26,7 +26,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { authService } from "@/services/authService";
 import { useAuthStore } from "@/store/authStore";
 import { useRegister } from "@/hooks/useAuth";
 
