@@ -4,6 +4,7 @@ import {
   RawAnalytics,
 } from "../models/analytics.model";
 import logger from "../config/logger.config";
+import { CreateRawAnalyticsDto } from "../dtos/analytics.dto";
 
 export interface CreateRawAnalytics {
   urlId: string;
@@ -36,7 +37,7 @@ export class AnalyticsRepository {
   async findHourlyAggregatedAnalyticsByUrlId(
     urlId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ) {
     // const analytics = await HourlyAggregatedAnalytics.find({ urlId });
     const rawDocs = await HourlyAggregatedAnalytics.find({
@@ -64,7 +65,9 @@ export class AnalyticsRepository {
     // console.log("START : ", start, " END : ", end);
     // console.log("RAW ANALYTICS : ", rawAnalytics);
 
-    logger.info(`Starting aggregating analytics for date range : ${start} - ${end}`);
+    logger.info(
+      `Starting aggregating analytics for date range : ${start} - ${end}`
+    );
 
     const aggregationMap: Map<
       string,
@@ -121,7 +124,6 @@ export class AnalyticsRepository {
     }
     // console.log("AGGREGATION MAP : ", aggregationMap);
 
-
     for (const [urlId, data] of aggregationMap) {
       await HourlyAggregatedAnalytics.create({
         urlId,
@@ -143,7 +145,9 @@ export class AnalyticsRepository {
       });
     }
 
-    logger.info(`Ending aggregating analytics for date range : ${start} - ${end}`);
+    logger.info(
+      `Ending aggregating analytics for date range : ${start} - ${end}`
+    );
   }
 
   async getAggregatedAnalyticsForDate(urlId: string, start: Date, end: Date) {
@@ -171,7 +175,57 @@ export class AnalyticsRepository {
       { $group: { _id: null, totalClicks: { $sum: "$clicks" } } },
     ]);
 
-
     return analytics[0]?.totalClicks || 0;
+  }
+
+  async createRawAnalyticsBatch(analytics: CreateRawAnalyticsDto[]) {
+    try {
+      const result = await RawAnalytics.insertMany(analytics, {
+        ordered: false,
+        rawResult: true,
+      });
+
+      console.log("createRawAnalyticsBatch RESULT : ", result);
+
+      const validationErrors = result?.mongoose?.validationErrors || [];
+
+      if (validationErrors.length > 0) {
+        const failed = validationErrors.map((err: any, index: number) => ({
+          index,
+          data: analytics[index],
+          reason: err.message,
+        }));
+
+        return {
+          insertedCount: result.insertedCount || 0,
+          failed,
+        };
+      }
+
+      return {
+        insertedCount: result.insertedCount || analytics.length,
+        failed: [],
+      };
+    } catch (error: any) {
+      console.error("createRawAnalyticsBatch error = ", error);
+
+      if (error?.code === 11000 || error?.writeErrors) {
+        const failed = error.writeErrors?.map((e: any) => ({
+          index: e.index,
+          data: analytics[e.index],
+          reason: e.errmsg || e.message,
+        }));
+
+        return {
+          insertedCount:
+            error.result?.nInserted ?? // ← mongoose 7+
+            error.result?.result?.nInserted ?? // ← mongoose 6
+            analytics.length - failed.length,
+          failed: failed || [],
+        };
+      }
+
+      throw error;
+    }
   }
 }

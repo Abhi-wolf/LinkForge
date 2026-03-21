@@ -22,7 +22,7 @@ import { startUrlExpiryWorker } from "./workers/url.expiry.worker";
 import { startUrlExpirySchedulaer } from "./queues/url.expiry.scheduler";
 import { startAggregationAnalyticsWorker } from "./workers/analytics.aggregation.worker";
 import { redirectUrl } from "./controllers/url.controller";
-import { analyticsQueue } from "./queues/analytics.queue";
+import { analyticsDeadLetterQueue, analyticsQueue } from "./queues/analytics.queue";
 import {
   appErrorHandler,
   genericErrorHandler,
@@ -89,7 +89,7 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/ui');
 
 createBullBoard({
-  queues: [new BullMQAdapter(analyticsQueue)],
+  queues: [new BullMQAdapter(analyticsQueue), new BullMQAdapter(analyticsDeadLetterQueue)],
   serverAdapter,
 });
 

@@ -15,7 +15,10 @@ export const analyticsQueue = new Queue(serverConfig.ANALYTICS_QUEUE, {
       age: 7 * 24 * 3600,   // Keep failed jobs for 7 days
       count: 1000   // Keep only the last 1000 failures
     },
-    removeOnComplete: true
+    removeOnComplete: {
+      age: 24 * 3600,   // keep for 24 hours
+      count: 1000,      // keep last 1000 completed jobs
+    },
   },
 });
 
