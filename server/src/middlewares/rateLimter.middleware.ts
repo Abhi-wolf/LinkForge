@@ -7,6 +7,7 @@ export function createRateLimitMiddleware(
 ) {
   const limiter = rateLimit({
     standardHeaders: true,
+    validate: { singleCount: false },
     ...options,
   });
 

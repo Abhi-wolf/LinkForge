@@ -2,22 +2,36 @@ import Redis from "ioredis";
 import { serverConfig } from ".";
 import logger from "./logger.config";
 
-const redisConfig = {
-  url: serverConfig.REDIS_URL,
-  maxRetriesPerRequest: null,
-  retryStrategy(times: number) {
-    if (times > 3) {
-      logger.error(
-        "Unable to connect to Redis server after multiple attempts.",
-      );
-      return null; // Stop retrying after 3 attempts
-    }
-    const delay = Math.min(times * 100, 3000); // Exponential backoff with a maximum delay of 3 seconds
-    return delay;
-  },
+// const redisConfig = {
+//   url: serverConfig.REDIS_URL,
+//   maxRetriesPerRequest: null,
+//   retryStrategy(times: number) {
+//     if (times > 3) {
+//       logger.error(
+//         "Unable to connect to Redis server after multiple attempts.",
+//       );
+//       return null; // Stop retrying after 3 attempts
+//     }
+//     const delay = Math.min(times * 100, 3000); // Exponential backoff with a maximum delay of 3 seconds
+//     return delay;
+//   },
+// };
+
+// export const redis = new Redis(redisConfig);
+
+const retryStrategy = (times: number) => {
+  if (times > 3) {
+    logger.error("Unable to connect to Redis server after multiple attempts.");
+    return null;
+  }
+  return Math.min(times * 100, 3000);
 };
 
-export const redis = new Redis(redisConfig);
+// ✅ Pass URL as first argument, options as second
+export const redis = new Redis(serverConfig.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  retryStrategy,
+});
 
 redis.on("connect", () => {
   logger.info("Connected to Redis server");
@@ -32,7 +46,10 @@ redis.on("end", () => {
 });
 
 export const createNewRedisConnection = () => {
-  return new Redis(redisConfig);
+  return new Redis(serverConfig.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    retryStrategy,
+  });
 };
 
 export async function initRedis() {

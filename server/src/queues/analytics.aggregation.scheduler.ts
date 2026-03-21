@@ -32,7 +32,10 @@ export const startAnalyticsAggregationScheduler = async () => {
       data: {},
       opts: {
         removeOnComplete: true,
-        removeOnFail: 1000,
+        removeOnFail: {
+          age: 7 * 24 * 3600,
+          count: 1000
+        },
       },
     },
   );

@@ -2,22 +2,30 @@ import mongoose from "mongoose";
 import logger from "./logger.config";
 import { serverConfig } from ".";
 
+const mongooseConfig = {
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  retryWrites: true
+}
+
 export async function connectDB() {
   try {
-    await mongoose.connect(serverConfig.DB_URL);
+    await mongoose.connect(serverConfig.DB_URL, mongooseConfig);
     logger.info("Connected to database");
   } catch (error) {
-    logger.error("Error connecting to database");
+    logger.error("Error connecting to database", error);
     process.exit(1);
   }
 }
 
 export async function disconnectDB() {
   try {
-    await mongoose.disconnect();
+    await mongoose.connection.close();
     logger.info("Disconnected from database");
   } catch (error) {
-    logger.error("Error disconnecting from database");
+    logger.error("Error disconnecting from database", error);
     process.exit(1);
   }
 }
@@ -28,11 +36,11 @@ export async function checkMongo(): Promise<boolean> {
       return false;
     }
 
-    // Optional deeper check (can remove if not needed)
     await mongoose.connection.db?.admin().ping();
 
     return true;
-  } catch {
+  } catch (error) {
+    logger.error("Mongo health check failed", error)
     return false;
   }
 }

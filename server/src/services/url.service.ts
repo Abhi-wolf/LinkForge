@@ -1,6 +1,6 @@
 import { serverConfig } from "../config";
-import { CreateUrlDto } from "../dtos/url.dto";
-import { IUrl, UrlStatus } from "../models/url.model";
+import type { CreateUrlDto } from "../dtos/url.dto";
+import { type IUrl, UrlStatus } from "../models/url.model";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import { UrlRepository } from "../repositories/url.repository";
@@ -17,6 +17,11 @@ export class UrlService {
   async createShortUrl(urlData: CreateUrlDto, userId?: string) {
     let shortUrl: string;
     let url;
+
+    // unauthorized user can only create url with 7 days expiration date
+    if (!userId) {
+      urlData.expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    }
 
     while (true) {
       const nextId = await this.cacheRepository.getNextId();
@@ -118,8 +123,6 @@ export class UrlService {
     status?: UrlStatus;
     startDate?: Date;
     endDate?: Date;
-    startExpireDate?: Date;
-    endExpireDate?: Date;
     limit?: number;
     offset?: number;
   }) {
@@ -167,17 +170,19 @@ export class UrlService {
       throw new ForbiddenError("You do not have permission to update this URL");
     }
 
-    if (data.status === UrlStatus.DELETED) {
+    if (existingUrl.status === UrlStatus.DELETED) {
       throw new NotFoundError("Url not found");
+    }
+
+    if (existingUrl.status === UrlStatus.EXPIRED) {
+      throw new BadRequestError("Expired URL cannot be updated");
     }
 
     if (data.expirationDate && new Date(data.expirationDate) < new Date()) {
       throw new BadRequestError("Expiration date cannot be in the past");
     }
 
-    if (data.status === UrlStatus.ACTIVE && existingUrl.status === UrlStatus.EXPIRED) {
-      throw new BadRequestError("Expired URL cannot be activated");
-    }
+
 
     const updatedUrl = await this.urlRepository.updateUrl(id, data);
 

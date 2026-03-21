@@ -52,6 +52,8 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
   });
 
   const onSubmit = (values: CreateLinkValues) => {
+    console.log("onSubmit=", values);
+
     const tagsArray = values.tags
       ? values.tags.split(",").map((tag) => tag.trim())
       : [];
@@ -60,6 +62,11 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
       expirationDate = new Date(values.expirationDate);
     }
 
+    console.log("createLink.mutate=", {
+      originalUrl: values.originalUrl,
+      tags: tagsArray,
+      expirationDate: expirationDate,
+    });
     createLink.mutate(
       {
         originalUrl: values.originalUrl,
@@ -72,6 +79,10 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
           setOpen(false);
           toast.success("Link created successfully!");
         },
+        onError: (error) => {
+          toast.error(error.message);
+          console.error("url creation error = ", error)
+        }
       },
     );
   };

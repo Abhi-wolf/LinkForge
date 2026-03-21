@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-// @ts-expect-error - useForm is exported but lint server is acting up
+
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,11 +68,11 @@ export function EditLinkDialog({
         tags: link.tags ? link.tags.join(", ") : "",
         expirationDate: link.expirationDate
           ? (() => {
-              const d = new Date(link.expirationDate);
-              return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-                .toISOString()
-                .slice(0, 16);
-            })()
+            const d = new Date(link.expirationDate);
+            return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+              .toISOString()
+              .slice(0, 16);
+          })()
           : "",
       });
     }
@@ -98,6 +98,9 @@ export function EditLinkDialog({
         onSuccess: () => {
           onOpenChange(false);
           toast.success("Link updated successfully");
+        },
+        onError: (error) => {
+          toast.error(error.message);
         },
       },
     );

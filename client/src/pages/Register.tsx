@@ -41,7 +41,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { mutate: registerUser } = useRegister();
   const setLogin = useAuthStore((state) => state.login);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),

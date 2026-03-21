@@ -7,6 +7,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Link as LinkIcon, AlertCircle, ArrowRight, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useTRPC } from '@/services/trpc';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,21 +36,23 @@ export default function LandingPage() {
         },
     });
 
-    // const mutation = useMutation({
-    //     mutationFn: (data: FormValues) => linkService.createShortLink(data.url),
-    //     onSuccess: (data) => {
-    //         setGeneratedLink(data);
-    //         form.reset();
-    //         toast.success("Short link generated successfully!");
-    //     },
-    //     onError: (error: any) => {
-    //         const message = error?.data?.message || 'Failed to generate link';
-    //         toast.error(message);
-    //     }
-    // });
+    const trpc = useTRPC();
+    const mutation = useMutation(
+        trpc.url.create.mutationOptions({
+            onSuccess: (data) => {
+                setGeneratedLink(data.url as unknown as ShortLink);
+                form.reset();
+                toast.success("Short link generated successfully!");
+            },
+            onError: (error: any) => {
+                const message = error?.data?.message || error.message || 'Failed to generate link';
+                toast.error(message);
+            }
+        })
+    );
 
     const onSubmit = (values: FormValues) => {
-        // mutation.mutate(values);
+        mutation.mutate({ originalUrl: values.url });
     };
 
     const copyToClipboard = () => {
@@ -113,11 +117,11 @@ export default function LandingPage() {
                                             type="submit"
                                             size="lg"
                                             className="h-16 w-full sm:w-auto px-10 rounded-[1.2rem] text-lg font-semibold transition-all hover:shadow-lg hover:shadow-primary/25 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-                                        // disabled={mutation.isPending}
+                                        disabled={mutation.isPending}
                                         >
-                                            {/* {mutation.isPending ? "Generating..." : (
+                                            {mutation.isPending ? "Generating..." : (
                                                 <>Shorten Now <ArrowRight className="ml-2 h-6 w-6" /></>
-                                            )} */}
+                                            )}
                                         </Button>
                                     </form>
                                 </Form>

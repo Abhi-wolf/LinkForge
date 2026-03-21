@@ -45,7 +45,6 @@ export default function Analytics() {
     // Use urlDesc from backend response
     const link = analyticsResponse?.urlDesc;
 
-    const isLoading = analyticsLoading;
     const isLinkNotFound = !analyticsLoading && !link;
 
     // Map backend data to UI format
@@ -66,7 +65,7 @@ export default function Analytics() {
         referrerData: analyticsResponse.analyticsNumbers.ref.map(r => ({ name: r.key, value: r.value }))
     } : null;
 
-    if (!analytics) {
+    if (!analytics || !link) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center gap-4 border-b pb-4">
@@ -119,7 +118,7 @@ export default function Analytics() {
                         <div className="flex items-center gap-3 pt-2">
                             <Badge variant="outline" className="gap-1.5 px-3 py-1">
                                 <Calendar className="h-3.5 w-3.5" />
-                                {new Date(link.createdAt).toLocaleDateString()}
+                                {new Date(link?.createdAt).toLocaleDateString()}
                             </Badge>
                             <Badge variant={link?.status === 'active' ? 'default' : 'secondary'} className={link.status === 'active' ? 'bg-green-500' : ''}>
                                 {link?.status}

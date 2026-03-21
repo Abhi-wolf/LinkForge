@@ -1,4 +1,4 @@
-import Url, { IUrl, UrlStatus } from "../models/url.model";
+import Url, { type IUrl, UrlStatus } from "../models/url.model";
 
 export interface CreateUrl {
   originalUrl: string;
@@ -109,8 +109,6 @@ export class UrlRepository {
     status?: UrlStatus;
     startDate?: Date;
     endDate?: Date;
-    startExpireDate?: Date;
-    endExpireDate?: Date;
     limit?: number;
     offset?: number;
   } = {}) {
@@ -133,11 +131,7 @@ export class UrlRepository {
       if (options.endDate) query.createdAt.$lte = options.endDate;
     }
 
-    if (options.startExpireDate || options.endExpireDate) {
-      query.expirationDate = {};
-      if (options.startExpireDate) query.expirationDate.$gte = options.startExpireDate;
-      if (options.endExpireDate) query.expirationDate.$lte = options.endExpireDate;
-    }
+
 
     const q = Url.find(query).sort({ createdAt: -1 });
 
@@ -157,8 +151,6 @@ export class UrlRepository {
     status?: UrlStatus;
     startDate?: Date;
     endDate?: Date;
-    startExpireDate?: Date;
-    endExpireDate?: Date;
   } = {}) {
     const query: any = { userId, status: { $ne: UrlStatus.DELETED } };
 
@@ -177,12 +169,6 @@ export class UrlRepository {
       query.createdAt = {};
       if (options.startDate) query.createdAt.$gte = options.startDate;
       if (options.endDate) query.createdAt.$lte = options.endDate;
-    }
-
-    if (options.startExpireDate || options.endExpireDate) {
-      query.expirationDate = {};
-      if (options.startExpireDate) query.expirationDate.$gte = options.startExpireDate;
-      if (options.endExpireDate) query.expirationDate.$lte = options.endExpireDate;
     }
 
     return await Url.countDocuments(query);

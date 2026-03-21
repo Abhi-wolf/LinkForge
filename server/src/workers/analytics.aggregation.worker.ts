@@ -42,7 +42,7 @@ async function setUpAggregationAnalyticsWorker() {
   );
 
   worker.on("error", (err) => {
-    logger.error(`Analytics worker error : ${err}`);
+    logger.error(`Analytics worker error : `, err);
   });
 
   worker.on("completed", (job) => {
@@ -50,7 +50,7 @@ async function setUpAggregationAnalyticsWorker() {
   });
 
   worker.on("failed", (job, error) => {
-    logger.error(`Analytics job ${job?.id} failed: ${error.message} `);
+    logger.error(`Analytics job ${job?.id} failed: `, error);
   });
 }
 

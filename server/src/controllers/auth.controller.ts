@@ -26,7 +26,7 @@ export const authController = {
         logger.info("User registered", result);
         return result;
       } catch (error) {
-        logger.error(`Error registering user: ${error}`);
+        logger.error(`Error registering user: `, error);
         handleAppError(error);
       }
     }),
@@ -47,13 +47,13 @@ export const authController = {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 5 * 1000, //  1 day
+          maxAge: 30 * 1000, //  1 day
         });
 
 
         return result;
       } catch (error) {
-        logger.error(`Error logging user: ${error}`);
+        logger.error(`Error logging user: `, error);
         handleAppError(error);
       }
     }),
@@ -72,13 +72,13 @@ export const authController = {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 5 * 1000, //  1day
+          maxAge: 30 * 1000, //  1day
         });
 
         logger.info(`Token refreshed for user ${tokens.userId}`)
         return tokens;
       } catch (error) {
-        logger.error(`Error refreshing token: ${error}`);
+        logger.error(`Error refreshing token: `, error);
         handleAppError(error);
       }
     }),
@@ -89,7 +89,7 @@ export const authController = {
       logger.info(`User ${ctx.user!.userId} logged out`);
       ctx.res.clearCookie("accessToken");
     } catch (error) {
-      logger.error(`Error logging out user: ${error}`);
+      logger.error(`Error logging out user: `, error);
       handleAppError(error);
     }
   }),
@@ -108,7 +108,7 @@ export const authController = {
         logger.info(`User ${ctx.user!.userId} updated`);
         return updatedUser;
       } catch (error) {
-        logger.error(`Error updating user: ${error}`);
+        logger.error(`Error updating user: `, error);
         handleAppError(error);
       }
     }),
@@ -119,7 +119,7 @@ export const authController = {
       const user = await authService.getUserById(ctx.user!.userId);
       return user;
     } catch (error) {
-      logger.error(`Error fetching user profile: ${error}`);
+      logger.error(`Error fetching user profile: `, error);
       handleAppError(error);
     }
   }),

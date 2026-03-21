@@ -1,5 +1,5 @@
 import { initTRPC } from "@trpc/server";
-import { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 
 export const createContext = ({ req, res }: CreateExpressContextOptions) => ({
   req,

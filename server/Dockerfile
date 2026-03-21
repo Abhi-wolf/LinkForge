@@ -1,7 +1,7 @@
 
 FROM node:lts-alpine3.22 AS builder
 
-WORKDIR /url_shortener_build
+WORKDIR /server
 
 COPY package*.json ./
 
@@ -13,12 +13,12 @@ RUN npm run build
 
 FROM node:lts-alpine3.22 AS development
 
-WORKDIR /url_shortener_prod
+WORKDIR /server_prod
 
 COPY package*.json ./
 
 RUN npm ci
 
-COPY --from=builder /url_shortener_build/dist ./dist
+COPY --from=builder /server/dist ./dist
 
 CMD ["npm","start"]

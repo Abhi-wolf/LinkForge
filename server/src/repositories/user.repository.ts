@@ -1,4 +1,4 @@
-import User, { IUser } from "../models/user.model";
+import User, { type IUser } from "../models/user.model";
 
 export class UserRepository {
   async create(data: Partial<IUser>): Promise<IUser> {

@@ -22,14 +22,17 @@ export const startUrlExpirySchedulaer = async () => {
   await urlExpiryScheduler.upsertJobScheduler(
     "url-expiry-scheduler-every-10mins",
     {
-      pattern: "0 */5 * * * *", // every 5 mins
+      pattern: "0 */16 * * * *", // every 16 mins
     },
     {
       name: "url-expiry-scheduler-every-10mins",
       data: {},
       opts: {
         removeOnComplete: true,
-        removeOnFail: 1000,
+        removeOnFail: {
+          age: 7 * 24 * 3600,
+          count: 1000
+        },
       },
     },
   );

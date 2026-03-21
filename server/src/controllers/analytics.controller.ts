@@ -30,9 +30,10 @@ export const analyticsController = {
           input.startDate,
           input.endDate,
         );
+
         return result;
       } catch (error) {
-        logger.error(`Error getting analytics URL: ${error}`);
+        logger.error(`Error getting analytics URL : `, error);
         handleAppError(error);
       }
     }),
@@ -42,7 +43,7 @@ export const analyticsController = {
       const result = await analyticsService.getUserAnalytics(ctx.user!.userId);
       return result;
     } catch (error) {
-      logger.error(`Error getting dashboard analytics: ${error}`);
+      logger.error(`Error getting dashboard analytics: `, error);
       handleAppError(error);
     }
   }),

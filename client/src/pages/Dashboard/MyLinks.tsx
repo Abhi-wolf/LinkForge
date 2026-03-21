@@ -77,8 +77,6 @@ export default function MyLinks() {
   const [status, setStatus] = useState<UrlStatus | "all">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [startExpireDate, setStartExpireDate] = useState("");
-  const [endExpireDate, setEndExpireDate] = useState("");
   const [page, setPage] = useState(1);
 
   // Debounce search
@@ -96,14 +94,12 @@ export default function MyLinks() {
     status: status === "all" ? undefined : status,
     startDate: startDate ? new Date(startDate) : undefined,
     endDate: endDate ? new Date(endDate) : undefined,
-    startExpireDate: startExpireDate ? new Date(startExpireDate) : undefined,
-    endExpireDate: endExpireDate ? new Date(endExpireDate) : undefined,
     limit: ITEMS_PER_PAGE,
     offset: (page - 1) * ITEMS_PER_PAGE,
-  }), [debouncedSearch, status, startDate, endDate, startExpireDate, endExpireDate, page]);
+  }), [debouncedSearch, status, startDate, endDate, page]);
 
   const { data, isLoading } = useLinks(fetchOptions);
-  
+
   // Handle new data structure { urls, total }
   const links = data?.urls || [];
   const total = data?.total || 0;
@@ -149,12 +145,10 @@ export default function MyLinks() {
     setStatus("all");
     setStartDate("");
     setEndDate("");
-    setStartExpireDate("");
-    setEndExpireDate("");
     setPage(1);
   };
 
-  const hasActiveFilters = search || status !== "all" || startDate || endDate || startExpireDate || endExpireDate;
+  const hasActiveFilters = search || status !== "all" || startDate || endDate;
 
   if (isLoading && page === 1) {
     return (
@@ -166,8 +160,8 @@ export default function MyLinks() {
           </div>
         </div>
         <div className="flex gap-4 mb-4">
-           <Skeleton className="h-10 w-full max-w-sm" />
-           <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-full max-w-sm" />
+          <Skeleton className="h-10 w-32" />
         </div>
         <div className="border rounded-xl p-0 overflow-hidden shadow-sm">
           <div className="p-4 bg-muted/30 border-b">
@@ -175,7 +169,7 @@ export default function MyLinks() {
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="p-4 border-b last:border-0">
-               <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ))}
         </div>
@@ -203,7 +197,7 @@ export default function MyLinks() {
             className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary shadow-none"
           />
         </div>
-        
+
         <Select value={status} onValueChange={(val) => { setStatus(val as UrlStatus | "all"); setPage(1); }}>
           <SelectTrigger className="bg-muted/50 border-none focus:ring-1 focus:ring-primary shadow-none">
             <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -218,52 +212,30 @@ export default function MyLinks() {
         </Select>
 
         <div className="flex items-center gap-2 group border-none">
-           <div className="relative flex-1 group">
-             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary" />
-             <Input 
-                type="date" 
-                value={startDate} 
-                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary shadow-none appearance-none"
-                title="Created After"
-             />
-           </div>
-           <span className="text-muted-foreground">-</span>
-           <div className="relative flex-1 group">
-             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary" />
-             <Input 
-                type="date" 
-                value={endDate} 
-                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary shadow-none appearance-none"
-                title="Created Before"
-             />
-           </div>
+          <div className="relative flex-1 group">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary" />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary shadow-none appearance-none"
+              title="Created After"
+            />
+          </div>
+          <span className="text-muted-foreground">-</span>
+          <div className="relative flex-1 group">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary" />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary shadow-none appearance-none"
+              title="Created Before"
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 group border-none">
-           <div className="relative flex-1 group">
-             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-destructive" />
-             <Input 
-                type="date" 
-                value={startExpireDate} 
-                onChange={(e) => { setStartExpireDate(e.target.value); setPage(1); }}
-                className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-destructive shadow-none appearance-none"
-                title="Expires After"
-             />
-           </div>
-           <span className="text-muted-foreground">-</span>
-           <div className="relative flex-1 group">
-             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-destructive" />
-             <Input 
-                type="date" 
-                value={endExpireDate} 
-                onChange={(e) => { setEndExpireDate(e.target.value); setPage(1); }}
-                className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-destructive shadow-none appearance-none"
-                title="Expires Before"
-             />
-           </div>
-        </div>
+
 
         {hasActiveFilters && (
           <div className="flex items-center justify-end">
@@ -292,18 +264,18 @@ export default function MyLinks() {
                 <TableRow>
                   <TableCell colSpan={6} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
-                       <div className="p-4 rounded-full bg-muted/50">
-                         <Filter className="h-8 w-8 text-muted-foreground" />
-                       </div>
-                       <div className="space-y-1">
-                         <h3 className="font-medium">No links found</h3>
-                         <p className="text-sm text-muted-foreground">Try adjusting your filters or search keywords.</p>
-                       </div>
-                       {hasActiveFilters && (
-                         <Button variant="outline" size="sm" onClick={clearFilters}>
-                            Clear all filters
-                         </Button>
-                       )}
+                      <div className="p-4 rounded-full bg-muted/50">
+                        <Filter className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-medium">No links found</h3>
+                        <p className="text-sm text-muted-foreground">Try adjusting your filters or search keywords.</p>
+                      </div>
+                      {hasActiveFilters && (
+                        <Button variant="outline" size="sm" onClick={clearFilters}>
+                          Clear all filters
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -334,7 +306,10 @@ export default function MyLinks() {
                     <TableCell>
                       {link.expirationDate ? (
                         <span className={`text-sm ${new Date(link.expirationDate) < new Date() ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                          {new Date(link.expirationDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {/* {new Date(link.expirationDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} */}
+                          {new Date(link.expirationDate).toLocaleString("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                          })}
                         </span>
                       ) : (
                         <span className="text-muted-foreground/50">-</span>
@@ -377,14 +352,14 @@ export default function MyLinks() {
                           >
                             Copy Short URL
                           </DropdownMenuItem>
-                          <DropdownMenuItem
+                          {link.status !== UrlStatus.EXPIRED && <DropdownMenuItem
                             className="cursor-pointer"
                             onClick={() =>
                               setEditLink(link as unknown as ShortLink)
                             }
                           >
                             <Edit className="mr-2 h-4 w-4" /> Edit Link
-                          </DropdownMenuItem>
+                          </DropdownMenuItem>}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="cursor-pointer"
@@ -457,29 +432,29 @@ export default function MyLinks() {
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">Previous Page</span>
             </Button>
-            
-            <div className="flex items-center gap-1 mx-2">
-               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                 let pageNum = page;
-                 if (totalPages <= 5) pageNum = i + 1;
-                 else if (page <= 3) pageNum = i + 1;
-                 else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-                 else pageNum = page - 2 + i;
 
-                 return (
-                   <Button
-                     key={pageNum}
-                     variant={page === pageNum ? "default" : "ghost"}
-                     size="sm"
-                     onClick={() => setPage(pageNum)}
-                     className={`h-8 w-8 p-0 ${page === pageNum ? 'shadow-sm' : ''}`}
-                     disabled={isLoading}
-                   >
-                     {pageNum}
-                   </Button>
-                 );
-               })}
-               {totalPages > 5 && (page < totalPages - 2) && <span className="text-muted-foreground px-1">...</span>}
+            <div className="flex items-center gap-1 mx-2">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum = page;
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (page <= 3) pageNum = i + 1;
+                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = page - 2 + i;
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={page === pageNum ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setPage(pageNum)}
+                    className={`h-8 w-8 p-0 ${page === pageNum ? 'shadow-sm' : ''}`}
+                    disabled={isLoading}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              {totalPages > 5 && (page < totalPages - 2) && <span className="text-muted-foreground px-1">...</span>}
             </div>
 
             <Button
@@ -510,7 +485,7 @@ export default function MyLinks() {
         open={!!deactivateId}
         onOpenChange={(open) => !open && setDeactivateId(null)}
       >
-        <DialogContent className="sm:max-w-md backdrop-blur-md bg-opacity-95">
+        <DialogContent className="sm:max-w-md ">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <ShieldAlert className="h-6 w-6 text-orange-500" />
@@ -546,7 +521,7 @@ export default function MyLinks() {
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
       >
-        <DialogContent className="sm:max-w-md backdrop-blur-md bg-opacity-95">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl text-destructive">
               <AlertTriangle className="h-6 w-6" />
@@ -575,11 +550,11 @@ export default function MyLinks() {
 
       {/* QR Code Dialog */}
       <Dialog open={!!qrLink} onOpenChange={(open) => !open && setQrLink(null)}>
-        <DialogContent className="sm:max-w-md backdrop-blur-md bg-opacity-95">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl">QR Code for Your Link</DialogTitle>
             <DialogDescription className="truncate max-w-full">
-               {qrLink?.fullUrl}
+              {qrLink?.fullUrl}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center p-8 space-y-4">
@@ -589,7 +564,7 @@ export default function MyLinks() {
               </div>
             )}
             <p className="text-sm text-muted-foreground text-center">
-               Scan this QR code with any mobile device to open the link instantly.
+              Scan this QR code with any mobile device to open the link instantly.
             </p>
           </div>
           <DialogFooter className="sm:justify-center">

@@ -1,6 +1,6 @@
 import { serverConfig } from "../config";
-import { CreateRawAnalyticsDto } from "../dtos/analytics.dto";
-import { IHourlyAggregatedAnalyticsModel } from "../models/analytics.model";
+import type { CreateRawAnalyticsDto } from "../dtos/analytics.dto";
+import type { IHourlyAggregatedAnalyticsModel } from "../models/analytics.model";
 import { UrlStatus } from "../models/url.model";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { UrlRepository } from "../repositories/url.repository";

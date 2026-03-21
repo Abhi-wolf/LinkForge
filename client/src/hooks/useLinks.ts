@@ -1,14 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useTRPC } from "@/services/trpc";
+import { UrlStatus } from "@/types/url.types";
 
 /** Fetch all links for the authenticated user with optional filters and pagination. */
 export function useLinks(options?: {
   search?: string;
-  status?: string;
+  status?: UrlStatus;
   startDate?: Date;
   endDate?: Date;
-  startExpireDate?: Date;
-  endExpireDate?: Date;
   limit?: number;
   offset?: number;
 }) {

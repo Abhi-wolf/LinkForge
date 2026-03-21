@@ -4,12 +4,12 @@ import { UrlService } from "../services/url.service";
 import { UrlRepository } from "../repositories/url.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import logger from "../config/logger.config";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
 import {
   addAnalyticsJob,
-  IAnalyticsJob,
+  type IAnalyticsJob,
 } from "../producers/analytics.producer";
 import { AnalyticsService } from "../services/analytics.service";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
@@ -38,6 +38,8 @@ export const urlController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        console.log("urlController create input=", input);
+
         const url = await urlService.createShortUrl(
           {
             originalUrl: input.originalUrl,
@@ -48,7 +50,7 @@ export const urlController = {
         );
         return { url };
       } catch (error) {
-        logger.error(`Error creating URL: ${error}`);
+        logger.error(`Error creating URL: `, error);
         handleAppError(error);
       }
     }),
@@ -77,7 +79,7 @@ export const urlController = {
         );
         return { url };
       } catch (error) {
-        logger.error(`Error updating URL: ${error}`);
+        logger.error(`Error updating URL: `, error);
         handleAppError(error);
       }
     }),
@@ -93,7 +95,7 @@ export const urlController = {
         await urlService.deleteUrl(input.id, ctx.user!.userId);
         return { success: true };
       } catch (error) {
-        logger.error(`Error deleting URL: ${error}`);
+        logger.error(`Error deleting URL: `, error);
         handleAppError(error);
       }
     }),
@@ -109,7 +111,7 @@ export const urlController = {
         const result = await urlService.getOriginalUrl(input.shortUrl);
         return result;
       } catch (error) {
-        logger.error(`Error getting original URL: ${error}`);
+        logger.error(`Error getting original URL: `, error);
         handleAppError(error);
       }
     }),
@@ -121,8 +123,6 @@ export const urlController = {
         status: z.nativeEnum(UrlStatus).optional(),
         startDate: z.coerce.date().optional(),
         endDate: z.coerce.date().optional(),
-        startExpireDate: z.coerce.date().optional(),
-        endExpireDate: z.coerce.date().optional(),
         limit: z.number().int().min(1).optional(),
         offset: z.number().int().min(0).optional(),
       }).optional(),
@@ -132,7 +132,7 @@ export const urlController = {
         const urls = await urlService.getAllUrlsOfUser(ctx.user!.userId, input || {});
         return urls;
       } catch (error) {
-        logger.error(`Error fetching URLs for user : ${error}`);
+        logger.error(`Error fetching URLs for user : `, error);
         handleAppError(error);
       }
     }),
