@@ -1,5 +1,7 @@
 # LinkForge - URL Shortener
 
+> **🚧 Work in Progress** - This project is currently under development and may contain incomplete features or bugs.
+
 A modern, feature-rich URL shortener application with analytics, built with React, TypeScript, Node.js, and MongoDB. Includes Model Context Protocol (MCP) server integration for AI-powered URL management.
 
 ---
@@ -159,17 +161,6 @@ The MCP server requires an API key for authentication. To generate an API key:
 1. **Generate API Key** (via your application settings or API)
 2. **Use the API Key** in the `x-api-key` header for all MCP requests
 
-#### Generating API Keys
-
-API keys can be generated through your application's settings or API. Store the generated key securely in your environment variables:
-
-```bash
-# In server/.env
-MCP_API_KEY=your-generated-api-key
-
-# In client/.env
-VITE_API_KEY=your-generated-api-key
-```
 
 #### Using MCP Inspector
 
@@ -312,11 +303,6 @@ This project is licensed under the MIT License.
 4. Add tests if applicable
 5. Submit a pull request
 
----
-
-## 📞 Support
-
-For support and questions, please open an issue in the repository or contact the development team.
 
 ---
 
