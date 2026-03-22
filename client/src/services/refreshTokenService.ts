@@ -12,7 +12,6 @@ export const refreshTokenFunc = async (refreshToken: string) => {
       },
     );
 
-    console.log(response.data, response.data.result.data);
     return {
       refreshToken: response.data.result.data.refreshToken,
       success: true,

@@ -38,7 +38,6 @@ export const urlController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        console.log("urlController create input=", input);
 
         const url = await urlService.createShortUrl(
           {

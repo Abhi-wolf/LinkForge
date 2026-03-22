@@ -146,7 +146,7 @@ export class AuthService {
 
       return { accessToken, refreshToken };
     } catch (error) {
-      console.log("Error generating tokens", error);
+      logger.error("Error generating tokens", error);
       throw new Error("Failed to generate tokens");
     }
   }
