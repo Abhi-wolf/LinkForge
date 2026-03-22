@@ -107,6 +107,7 @@ export class AnalyticsService {
     let totalClicks = 0;
     const topPerformingLinks = [];
 
+    // TODO: remove N+1 query problem here
     for (let url of userUrls) {
       const urlClicks = await this.analyticsRepository.getTotalClicksForUrl(
         url.id,

@@ -16,7 +16,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useAuthStore } from "@/store/authStore";
-import { Chatbot } from "@/components/Chatbot";
 import { useGetMe } from "@/hooks/useAuth";
 
 export default function DashboardLayout() {
@@ -93,7 +92,6 @@ export default function DashboardLayout() {
             <Outlet />
           </main>
         </div>
-        <Chatbot />
       </div>
     </SidebarProvider>
   );

@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
 import { MessageSquare, Send, Bot, User, Loader2 } from 'lucide-react';
-import { chatWithGemini } from '../services/geminiService';
+// import { chatWithGemini } from '../services/geminiService';
 
 interface Message {
   role: 'user' | 'model';
@@ -44,14 +44,14 @@ export const Chatbot: React.FC = () => {
         parts: msg.parts
       }));
 
-      const response = await chatWithGemini(input, history);
+      // const response = await chatWithGemini(input, history);
       
-      const botMessage: Message = { 
-        role: 'model', 
-        parts: [{ text: response.text }] 
-      };
+      // const botMessage: Message = { 
+      //   role: 'model', 
+      //   parts: [{ text: response.text }] 
+      // };
       
-      setMessages((prev) => [...prev, botMessage]);
+      // setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Chat error:", error);
     } finally {

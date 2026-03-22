@@ -28,8 +28,15 @@ export function isAuthenticated() {
       });
     }
 
+    if (!serverConfig.JWT_ACCESS_SECRET) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "JWT_ACCESS_SECRET is not defined",
+      });
+    }
+
     try {
-      const decoded = jwt.verify(token, serverConfig.JWT_ACCESS_SECRET!) as {
+      const decoded = jwt.verify(token, serverConfig.JWT_ACCESS_SECRET) as {
         userId: string;
         tokenVersion: number;
       };

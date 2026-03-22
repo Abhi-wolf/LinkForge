@@ -59,31 +59,23 @@ app.use(
 app.use("/api/v1", v1Router);
 app.use("/api/v2", v2Router);
 
-app.get("/health", async (req: Request, res: Response) => {
-  try {
-    const isRedisRunning = await checkRedis();
-    const isMongoRunning = await checkMongo();
-
-    if (!isRedisRunning || !isMongoRunning) {
-      res.status(503).json({
-        success: false,
-        error: "Dependency failure",
-      });
-
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Server is running",
-      uptime: process.uptime(),
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: "Dependency failure",
-    });
-  }
+app.get("/health-check", async (req: Request, res: Response) => {
+  const checks = {
+    database: await checkMongo(),
+    redis: await checkRedis(),
+    memory: process.memoryUsage(),
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  };
+  
+  const isHealthy = Object.values(checks).every(check => 
+    typeof check === 'boolean' ? check : true
+  );
+  
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'unhealthy',
+    checks
+  });
 });
 
 const serverAdapter = new ExpressAdapter();

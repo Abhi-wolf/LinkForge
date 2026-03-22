@@ -1,24 +1,23 @@
-
-
 FROM node:lts-alpine3.22 AS builder
 
 WORKDIR /app
 
-# Copy server first (needed for tRPC types)
+# Copy server package files first (needed for tRPC types)
 COPY server/package*.json ./server/
-RUN cd server && npm install
+RUN cd server && npm ci
 
+# Copy client package files
 COPY client/package*.json ./client/
-RUN cd client && npm install
+RUN cd client && npm ci
 
-# Copy source
+# Copy both server and client source
 COPY server ./server
 COPY client ./client
 
 # Build client
 RUN cd client && npm run build
 
-# Stage 2: Serve
+# Production stage
 FROM node:lts-alpine3.22
 
 WORKDIR /app
@@ -29,3 +28,4 @@ COPY --from=builder /app/client/dist ./dist
 
 EXPOSE 3000
 CMD ["serve", "-s", "dist", "-l", "3000"]
+

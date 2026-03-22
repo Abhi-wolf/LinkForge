@@ -45,7 +45,7 @@ export default function Login() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "hello@email.com", password: "hello@123" },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (values: LoginValues) => {
@@ -53,7 +53,9 @@ export default function Login() {
     loginUser(values, {
       onSuccess: (data) => {
         console.log("Login data:", data);
-        setLogin(data);
+        if (data.refreshToken) {
+          setLogin({ refreshToken: data.refreshToken });
+        }
         toast.success("Logged in successfully!");
         navigate("/dashboard");
       },

@@ -1,13 +1,16 @@
 import { serverConfig } from "../config";
 import { ApiKeyRepository } from "../repositories/apiKey.repository";
 import crypto from "crypto";
-import { BadRequestError, NotFoundError } from "../utils/errors/app.error";
+import {
+  ForbiddenError,
+  NotFoundError,
+} from "../utils/errors/app.error";
 
 export class ApiKeyService {
   constructor(private readonly apiKeyRepository: ApiKeyRepository) { }
 
   async createApiKey(userId: string, description?: string) {
-    const rawApiKey = this.generateApiKey(userId);
+    const rawApiKey = this.generateApiKey();
     const hashedKey = this.hashKey(rawApiKey);
 
     const savedKey = await this.apiKeyRepository.create({
@@ -40,8 +43,10 @@ export class ApiKeyService {
         ? (apiKey.userId as any)._id.toString()
         : apiKey.userId.toString();
 
+
+
     if (apiUserId !== userId) {
-      throw new BadRequestError("Access denied");
+      throw new ForbiddenError("Access denied");
     }
 
     return await this.apiKeyRepository.updateApiKeyStatus(id, status);
@@ -60,7 +65,7 @@ export class ApiKeyService {
         : apiKey.userId.toString();
 
     if (apiUserId !== userId) {
-      throw new BadRequestError("Access denied");
+      throw new ForbiddenError("Access denied");
     }
 
     return await this.apiKeyRepository.deleteApiKey(id);
@@ -71,18 +76,11 @@ export class ApiKeyService {
   }
 
   private generateApiKey(
-    userId: string,
     prefix = serverConfig.NODE_ENV === "production"
       ? "apiKey_prod"
       : "apiKey_dev",
   ): string {
-    const userEntropy = `${userId}`;
-    const randomPart = crypto.randomBytes(24).toString("hex");
-    const combined = `${userEntropy}-${randomPart}`;
-
-    // Hash the combined string for consistent length
-    const key = crypto.createHash("sha256").update(combined).digest("hex");
-
-    return `${prefix}_${key}`;
+    const randomPart = crypto.randomBytes(32).toString("hex");
+    return `${prefix}_${randomPart}`;
   }
 }

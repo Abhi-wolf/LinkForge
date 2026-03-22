@@ -12,10 +12,7 @@ import { ApiKeyItem } from "./ApiKeyItem";
 
 interface ApiKeyListProps {
   apiKeys: ApiKey[];
-  showApiKey: string | null;
-  setShowApiKey: (id: string | null) => void;
   refetch: () => void;
-  copyToClipboard: (text: string) => void;
   confirmStatusUpdate: (id: string, status: ApiKeyStatus) => void;
   setDeleteId: (id: string | null) => void;
   onCreateKey: () => void;
@@ -23,10 +20,7 @@ interface ApiKeyListProps {
 
 export function ApiKeyList({
   apiKeys,
-  showApiKey,
-  setShowApiKey,
   refetch,
-  copyToClipboard,
   confirmStatusUpdate,
   setDeleteId,
   onCreateKey,
@@ -73,9 +67,6 @@ export function ApiKeyList({
               <ApiKeyItem
                 key={apiKey.id}
                 apiKey={apiKey}
-                showApiKey={showApiKey}
-                setShowApiKey={setShowApiKey}
-                copyToClipboard={copyToClipboard}
                 confirmStatusUpdate={confirmStatusUpdate}
                 setDeleteId={setDeleteId}
               />

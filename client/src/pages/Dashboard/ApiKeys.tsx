@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useApiKeys,
@@ -16,9 +16,9 @@ import { ApiKeyHeader } from "./components/ApiKeys/ApiKeyHeader";
 import { ApiKeyStats } from "./components/ApiKeys/ApiKeyStats";
 import { ApiKeyList } from "./components/ApiKeys/ApiKeyList";
 import { ApiKeyDialogs } from "./components/ApiKeys/ApiKeyDialogs";
+import { ApiKey } from "@/types/apiKey.types";
 
 export default function ApiKeys() {
-  const [showApiKey, setShowApiKey] = useState<string | null>(null);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusUpdateId, setStatusUpdateId] = useState<string | null>(null);
@@ -77,17 +77,7 @@ export default function ApiKeys() {
     toast.success("API key copied to clipboard");
   };
 
-  const downloadApiKeys = () => {
-    const dataStr = JSON.stringify(apiKeys, null, 2);
-    const dataUri =
-      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-    const exportFileDefaultName = "api-keys.json";
 
-    const linkElement = document.createElement("a");
-    linkElement.setAttribute("href", dataUri);
-    linkElement.setAttribute("download", exportFileDefaultName);
-    linkElement.click();
-  };
 
   if (isLoading) {
     return (
@@ -116,20 +106,15 @@ export default function ApiKeys() {
   return (
     <div className="space-y-6 pt-4">
       <ApiKeyHeader
-        apiKeysCount={apiKeys.length}
-        onDownload={downloadApiKeys}
         onCreateKey={() => setIsCreateDialogOpen(true)}
         isPending={createApiKey.isPending}
       />
 
-      <ApiKeyStats apiKeys={apiKeys} />
+      <ApiKeyStats apiKeys={apiKeys as ApiKey[]} />
 
       <ApiKeyList
-        apiKeys={apiKeys}
-        showApiKey={showApiKey}
-        setShowApiKey={setShowApiKey}
+        apiKeys={apiKeys as ApiKey[]}
         refetch={refetch}
-        copyToClipboard={copyToClipboard}
         confirmStatusUpdate={confirmStatusUpdate}
         setDeleteId={setDeleteId}
         onCreateKey={() => setIsCreateDialogOpen(true)}

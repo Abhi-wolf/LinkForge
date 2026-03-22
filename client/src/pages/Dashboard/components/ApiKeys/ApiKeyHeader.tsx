@@ -1,16 +1,12 @@
-import { Download, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ApiKeyHeaderProps {
-  apiKeysCount: number;
-  onDownload: () => void;
   onCreateKey: () => void;
   isPending: boolean;
 }
 
 export function ApiKeyHeader({
-  apiKeysCount,
-  onDownload,
   onCreateKey,
   isPending,
 }: ApiKeyHeaderProps) {
@@ -25,15 +21,7 @@ export function ApiKeyHeader({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          onClick={onDownload}
-          variant="outline"
-          className="gap-2"
-          disabled={apiKeysCount === 0}
-        >
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+
         <Button
           onClick={onCreateKey}
           disabled={isPending}

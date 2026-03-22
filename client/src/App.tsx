@@ -23,7 +23,7 @@ import { useState } from "react";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "../../server/src/routers/trpc";
 import { TRPCProvider } from "./services/trpc";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+// import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { serverConfig } from "./services/config";
 import { refreshTokenFunc } from "./services/refreshTokenService";
 import ApiKeys from "./pages/Dashboard/ApiKeys";
@@ -170,7 +170,7 @@ function App() {
           <Toaster />
         </TRPCProvider>
 
-        <ReactQueryDevtools initialIsOpen={false} />
+        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
       </QueryClientProvider>
     </ThemeProvider>
   );

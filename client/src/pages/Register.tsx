@@ -46,16 +46,18 @@ export default function Register() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      email: "hello@email.com",
-      password: "Hello@123",
-      name: "John Doe",
+      email: "",
+      password: "",
+      name: "",
     },
   });
 
   const onSubmit = async (values: RegisterValues) => {
     registerUser(values, {
       onSuccess: (data) => {
-        setLogin(data);
+        if (data.refreshToken) {
+          setLogin({ refreshToken: data.refreshToken });
+        }
         toast.success("Account created successfully!");
         navigate("/dashboard");
       },

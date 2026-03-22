@@ -33,9 +33,11 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+      target: production
     restart: unless-stopped
     ports:
       - 4000:4000
+      - 4200:4200
     depends_on:
       mongo:
         condition: service_healthy
@@ -48,23 +50,27 @@ services:
       - DB_URL=mongodb://mongo:27017/url_shortener
       - REDIS_URL=redis://redis:6379
       - REDIS_COUNTER_KEY=url_shortener_counter
+      - NODE_ENV=production
       - BASE_URL=http://localhost:4000
-    # healthcheck:                              # ← added so client can depend on it
-    #   test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
   
   client:
     build:
-      context: .   # ← must be root (needs server/ for tRPC types)
+      context: .
       dockerfile: client/Dockerfile
     restart: unless-stopped
     ports:
       - 3000:3000
     depends_on:
-      - server
-        # condition: service_healthy
+      server:
+        condition: service_healthy
     networks:
       - backend
     environment:

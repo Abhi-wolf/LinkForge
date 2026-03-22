@@ -5,7 +5,7 @@ import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import { UrlRepository } from "../repositories/url.repository";
 import { toBase62 } from "../utils/base62";
-import { BadRequestError, ForbiddenError, NotFoundError } from "../utils/errors/app.error";
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from "../utils/errors/app.error";
 
 export class UrlService {
   constructor(
@@ -23,7 +23,10 @@ export class UrlService {
       urlData.expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
-    while (true) {
+    const MAX_ATTEMPTS=10;
+    let attempts=0;
+
+    while (attempts < MAX_ATTEMPTS) {
       const nextId = await this.cacheRepository.getNextId();
 
       shortUrl = toBase62(nextId);
@@ -32,6 +35,7 @@ export class UrlService {
       const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
       if (existingUrl) {
+        attempts++;
         continue; // Collision occurred, generate a new short URL
       }
 
@@ -46,27 +50,31 @@ export class UrlService {
       break;
     }
 
+    if(attempts >= MAX_ATTEMPTS) {
+      throw new InternalServerError("Failed to generate unique short URL after multiple attempts");
+    }
+
     await this.cacheRepository.setUrlMapping({
-      shortUrl: url.shortUrl,
-      originalUrl: url.originalUrl,
-      urlId: url._id?.toString(),
-      status: url.status,
-      expirationDate: url.expirationDate?.toISOString() ?? "",
+      shortUrl: url!.shortUrl,
+      originalUrl: url!.originalUrl,
+      urlId: url!._id?.toString(),
+      status: url!.status,
+      expirationDate: url!.expirationDate?.toISOString() ?? "",
     });
 
     const baseUrl = serverConfig.BASE_URL;
-    const fullUrl = `${baseUrl}/${shortUrl}`;
+    const fullUrl = `${baseUrl}/${url!.shortUrl}`;
 
     return {
-      id: url._id?.toString(),
+      id: url!._id?.toString(),
       fullUrl,
-      shortUrl,
+      shortUrl: url!.shortUrl,
       originalUrl: urlData.originalUrl,
       tags: urlData.tags,
       expirationDate: urlData.expirationDate,
-      clicks: url.clicks,
-      createdAt: url.createdAt,
-      updatedAt: url.updatedAt,
+      clicks: url!.clicks,
+      createdAt: url!.createdAt,
+      updatedAt: url!.updatedAt,
     };
   }
 

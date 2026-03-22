@@ -89,8 +89,8 @@ async function setUpAnalyticsWorker() {
   let isFlushing = false;  // to stop multiple flushes at the same time
 
   // TODO: change the batchsize and batchtimeout
-  const batchSize = 2;
-  const batchTimeout = 50000; // flush after every 50 second
+  const batchSize = 20;
+  const batchTimeout = 5000; // flush after every 5 second
 
   async function flushBatch() {
     if (batch.length == 0) return;

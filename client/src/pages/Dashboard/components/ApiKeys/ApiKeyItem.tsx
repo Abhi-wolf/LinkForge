@@ -1,4 +1,4 @@
-import { Ban, CheckCircle, Copy, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Ban, CheckCircle, MoreHorizontal, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,18 +12,12 @@ import { ApiKey, ApiKeyStatus } from "@/types/apiKey.types";
 
 interface ApiKeyItemProps {
   apiKey: ApiKey;
-  showApiKey: string | null;
-  setShowApiKey: (id: string | null) => void;
-  copyToClipboard: (text: string) => void;
   confirmStatusUpdate: (id: string, status: ApiKeyStatus) => void;
   setDeleteId: (id: string | null) => void;
 }
 
 export function ApiKeyItem({
   apiKey,
-  showApiKey,
-  setShowApiKey,
-  copyToClipboard,
   confirmStatusUpdate,
   setDeleteId,
 }: ApiKeyItemProps) {
@@ -33,23 +27,15 @@ export function ApiKeyItem({
   };
 
   const apiKeyId = apiKey.id || (apiKey as any)._id;
-  const isVisible = showApiKey === apiKeyId;
 
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-3">
           <div className="font-mono text-sm bg-muted px-3 py-1 rounded">
-            {isVisible ? apiKey.apiKey : maskApiKey(apiKey.apiKey)}
+            { maskApiKey(apiKey.apiKey)}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowApiKey(isVisible ? null : apiKeyId)}
-            className="h-8 w-8 p-0"
-          >
-            {isVisible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-          </Button>
+
         </div>
 
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -72,19 +58,11 @@ export function ApiKeyItem({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => copyToClipboard(apiKey.apiKey)}
-          className="h-8 w-8 p-0"
-        >
-          <Copy className="h-3 w-3" />
-        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Trash2 className="h-3 w-3" />
+              <MoreHorizontal className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
