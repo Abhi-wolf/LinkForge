@@ -104,20 +104,24 @@ export class UrlRepository {
     };
   }
 
-  async getUrlsOfUser(userId: string, options: {
-    search?: string;
-    status?: UrlStatus;
-    startDate?: Date;
-    endDate?: Date;
-    limit?: number;
-    offset?: number;
-  } = {}) {
+  async getUrlsOfUser(
+    userId: string,
+    options: {
+      search?: string;
+      status?: UrlStatus;
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
     const query: any = { userId, status: { $ne: UrlStatus.DELETED } };
 
     if (options.search) {
       query.$or = [
         { originalUrl: { $regex: options.search, $options: "i" } },
         { shortUrl: { $regex: options.search, $options: "i" } },
+        { tags: { $regex: options.search, $options: "i" } },
       ];
     }
 
@@ -130,8 +134,6 @@ export class UrlRepository {
       if (options.startDate) query.createdAt.$gte = options.startDate;
       if (options.endDate) query.createdAt.$lte = options.endDate;
     }
-
-
 
     const q = Url.find(query).sort({ createdAt: -1 });
 
@@ -146,18 +148,22 @@ export class UrlRepository {
     return await q.exec();
   }
 
-  async countUrlsOfUser(userId: string, options: {
-    search?: string;
-    status?: UrlStatus;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}) {
+  async countUrlsOfUser(
+    userId: string,
+    options: {
+      search?: string;
+      status?: UrlStatus;
+      startDate?: Date;
+      endDate?: Date;
+    } = {},
+  ) {
     const query: any = { userId, status: { $ne: UrlStatus.DELETED } };
 
     if (options.search) {
       query.$or = [
         { originalUrl: { $regex: options.search, $options: "i" } },
         { shortUrl: { $regex: options.search, $options: "i" } },
+        { tags: { $regex: options.search, $options: "i" } },
       ];
     }
 

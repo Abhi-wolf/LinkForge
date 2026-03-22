@@ -26,6 +26,7 @@ import { TRPCProvider } from "./services/trpc";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { serverConfig } from "./services/config";
 import { refreshTokenFunc } from "./services/refreshTokenService";
+import ApiKeys from "./pages/Dashboard/ApiKeys";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -102,6 +103,10 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "api-keys",
+        element: <ApiKeys />,
       },
     ],
   },

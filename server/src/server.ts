@@ -27,6 +27,7 @@ import {
   appErrorHandler,
   genericErrorHandler,
 } from "./middlewares/error.middleware";
+import { startMcpServer } from "./mcp.server";
 
 const app = express();
 
@@ -119,7 +120,7 @@ app.listen(serverConfig.PORT, async () => {
   await startUrlExpirySchedulaer();
   await startUrlExpiryWorker();
 
-  // await startMcpServer();
+  await startMcpServer();
 });
 
 process.on("SIGINT", async () => {

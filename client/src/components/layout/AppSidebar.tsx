@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Link as LinkIcon, Settings } from 'lucide-react';
+import { Home, Link as LinkIcon, Settings, Key } from 'lucide-react';
 
 import {
     Sidebar,
@@ -22,6 +22,11 @@ const items = [
         title: "My Links",
         url: "/dashboard/links",
         icon: LinkIcon,
+    },
+    {
+        title: "API Keys",
+        url: "/dashboard/api-keys",
+        icon: Key,
     },
     {
         title: "Settings",

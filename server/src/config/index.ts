@@ -4,6 +4,7 @@ import logger from "./logger.config";
 
 type ServerConfig = {
   PORT: number;
+  NODE_ENV: string;
   DB_URL: string;
   REDIS_URL: string;
   BASE_URL: string;
@@ -27,6 +28,7 @@ loadEnv();
 
 export const serverConfig: ServerConfig = {
   PORT: Number(process.env.PORT) || 3001,
+  NODE_ENV: process.env.NODE_ENV || "development",
   DB_URL: process.env.DB_URL || "mongodb://localhost:27017/url_shortener",
   REDIS_URL: process.env.REDIS_URL || "redis://redis:6379", // for docker
   REDIS_COUNTER_KEY: process.env.REDIS_COUNTER_KEY || "url_shortener_counter",
@@ -34,7 +36,7 @@ export const serverConfig: ServerConfig = {
   ANALYTICS_QUEUE: process.env.ANALYTICS_QUEUE || "analytics_queue",
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || "access_secret_123",
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh_secret_123",
-  ACCESS_TOKEN_EXPIRE: process.env.ACCESS_TOKEN_EXPIRE || "60m",
+  ACCESS_TOKEN_EXPIRE: process.env.ACCESS_TOKEN_EXPIRE || "10m",
   REFRESH_TOKEN_EXPIRE: process.env.REFRESH_TOKEN_EXPIRE || "7d",
   ANALYTICS_DEAD_LETTER_QUEUE: process.env.ANALYTICS_DEAD_LETTER_QUEUE || "analytics_dead_letter_queue",
   AGGREGATION_ANALYTICS_SCHEDULER:

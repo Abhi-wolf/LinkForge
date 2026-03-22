@@ -253,6 +253,7 @@ export default function MyLinks() {
               <TableRow className="hover:bg-transparent border-b">
                 <TableHead className="w-[300px] font-semibold">Original URL</TableHead>
                 <TableHead className="font-semibold">Short URL</TableHead>
+                <TableHead className="font-semibold">Tags</TableHead>
                 <TableHead className="font-semibold">Created</TableHead>
                 <TableHead className="font-semibold">Expires</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
@@ -262,7 +263,7 @@ export default function MyLinks() {
             <TableBody>
               {links.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-64 text-center">
+                  <TableCell colSpan={7} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <div className="p-4 rounded-full bg-muted/50">
                         <Filter className="h-8 w-8 text-muted-foreground" />
@@ -299,6 +300,23 @@ export default function MyLinks() {
                       >
                         {link.fullUrl.replace(/^https?:\/\//, '')} <ExternalLink className="h-3 w-3" />
                       </a>
+                    </TableCell>
+                    <TableCell>
+                      {link.tags && link.tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {link.tags.map((tag, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-sm">No tags</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(link.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

@@ -40,7 +40,6 @@ const passwordSchema = z
   });
 
 export default function Settings() {
-  // const user = useAuthStore((state) => state.user);
   const { data: user } = useGetMe();
   const updateUser = useUpdateUser();
 
@@ -72,7 +71,6 @@ export default function Settings() {
   }
 
   function onPasswordSubmit(_values: z.infer<typeof passwordSchema>) {
-
     if (_values.confirmPassword !== _values.newPassword) {
       toast.error("Passwords do not match");
       return;
@@ -86,7 +84,7 @@ export default function Settings() {
       onError: (error) => {
         toast.error(error.message);
       },
-    })
+    });
   }
 
   return (
@@ -176,7 +174,7 @@ export default function Settings() {
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="••••••••"
+                          placeholder="••••••"
                           {...field}
                         />
                       </FormControl>
@@ -193,7 +191,7 @@ export default function Settings() {
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="••••••••"
+                          placeholder="••••••"
                           {...field}
                         />
                       </FormControl>

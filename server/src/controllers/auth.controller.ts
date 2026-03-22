@@ -47,7 +47,7 @@ export const authController = {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 30 * 1000, //  1 day
+          maxAge: 10 * 60 * 1000, //  10 mins
         });
 
 
@@ -72,7 +72,7 @@ export const authController = {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 30 * 1000, //  1day
+          maxAge: 10 * 60 * 1000, //  10 mins
         });
 
         logger.info(`Token refreshed for user ${tokens.userId}`)
