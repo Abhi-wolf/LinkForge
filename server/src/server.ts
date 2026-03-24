@@ -7,8 +7,6 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 
 import { serverConfig } from "./config";
-import v1Router from "./routers/v1/index.router";
-import v2Router from "./routers/v2/index.router";
 import logger from "./config/logger.config";
 import { attachCorrelationIdMiddleware } from "./middlewares/correlation.middleware";
 import { checkRedis, closeRedis, initRedis } from "./config/redis";
@@ -56,8 +54,6 @@ app.use(
   }),
 );
 
-app.use("/api/v1", v1Router);
-app.use("/api/v2", v2Router);
 
 app.get("/health-check", async (req: Request, res: Response) => {
   const checks = {

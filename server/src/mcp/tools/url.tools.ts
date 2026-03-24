@@ -1,133 +1,166 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { UrlFactory } from "../../factories/url.factory";
+import { withMcpErrorHandling } from "../utils/mcp.error";
+import { AnalyticsFactory } from "../../factories/analytics.factory";
 
-// function registerTools(server: McpServer, userId: string) {
-//   server.registerTool(
-//     "create_short_url",
-//     {
-//       description: "Creates a short URL",
-//       inputSchema: {
-//         originalUrl: z.string().describe("The original URL to be shortened"),
-//         tags: z.array(z.string()).optional(),
-//         expirationDate: z.coerce.date().optional(),
-//       },
-//     },
-//     async (args: {
-//       originalUrl: string;
-//       tags?: string[];
-//       expirationDate?: Date;
-//     }) => {
-//       const result = await urlService.createShortUrl({
-//         originalUrl: args.originalUrl,
-//         tags: args.tags,
-//         expirationDate: args.expirationDate,
-//       },userId);
+const urlService = UrlFactory.getUrlService();
+const analyticsService = AnalyticsFactory.getAnalyticsService();
 
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: JSON.stringify(result),
-//           },
-//         ],
-//       };
-//     },
-//   );
+export function registerUrlShortenerTools(server: McpServer, userId: string) {
+  server.registerTool(
+    "create_short_url",
+    {
+      description: "Creates a short URL",
+      inputSchema: {
+        originalUrl: z.string().describe("The original URL to be shortened"),
+        tags: z.array(z.string()).optional(),
+        expirationDate: z.coerce.date().optional(),
+      },
+    },
+    // async (args: {
+    //   originalUrl: string;
+    //   tags?: string[];
+    //   expirationDate?: Date;
+    // }) => {
+    //   const result = await urlService.createShortUrl({
+    //     originalUrl: args.originalUrl,
+    //     tags: args.tags,
+    //     expirationDate: args.expirationDate,
+    //   },userId);
 
-//   server.registerTool(
-//     "get_original_url",
-//     {
-//       description: "Retrieves the original URL from a short URL ID",
-//       inputSchema: {
-//         shortUrl: z.string().describe("The short URL ID"),
-//       },
-//     },
-//     async (args: { shortUrl: string }) => {
-//       const result = await urlService.getOriginalUrl(args.shortUrl);
+    //   return {
+    //     content: [
+    //       {
+    //         type: "text",
+    //         text: JSON.stringify(result),
+    //       },
+    //     ],
+    //   };
+    // },
 
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: JSON.stringify(result),
-//           },
-//         ],
-//       };
-//     },
-//   );
+    withMcpErrorHandling(
+      async (args: {
+        originalUrl: string;
+        tags?: string[];
+        expirationDate?: Date;
+      }) => {
+        const result = await urlService.createShortUrl(
+          {
+            originalUrl: args.originalUrl,
+            tags: args.tags,
+            expirationDate: args.expirationDate,
+          },
+          userId,
+        );
 
-//   server.registerTool(
-//     "get_analytics_info_about_a_url",
-//     {
-//       description: "Retrieves analytics info about a short url",
-//       inputSchema: {
-//         shortUrl: z.string().describe("The short URL ID"),
-//         startDate: z.coerce
-//           .date()
-//           .describe("Date from which the analytics you want"),
-//         endDate: z.coerce
-//           .date()
-//           .describe("Date upto which the analytics you want"),
-//       },
-//     },
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result),
+            },
+          ],
+        };
+      },
+    ),
+  );
 
+  server.registerTool(
+    "get_original_url",
+    {
+      description: "Retrieves the original URL from a short URL ID",
+      inputSchema: {
+        shortUrl: z.string().describe("The short URL ID"),
+      },
+    },
+    // async (args: { shortUrl: string }) => {
+    //   const result = await urlService.getOriginalUrl(args.shortUrl);
 
-//     async (args: { shortUrl: string; startDate: Date; endDate: Date }) => {
-//       // console.log("get_analytics_info_about_a_url = ",args);
+    //   return {
+    //     content: [
+    //       {
+    //         type: "text",
+    //         text: JSON.stringify(result),
+    //       },
+    //     ],
+    //   };
+    // },
 
-//       // const urlInfo = await urlService.getUrlBelongsToUser(args.shortUrl, userId);
+    withMcpErrorHandling(async (args: { shortUrl: string }) => {
+      const result = await urlService.getOriginalUrl(args.shortUrl);
 
-//       // console.log("urlInfo = ",urlInfo);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    }),
+  );
 
-//       // if (!urlInfo) {
-//       //   throw new NotFoundError("URL not found");
-//       // }
+  server.registerTool(
+    "get_analytics_info_about_a_url",
+    {
+      description: "Retrieves analytics info about a short url",
+      inputSchema: {
+        shortUrl: z.string().describe("The short URL ID"),
+        startDate: z.coerce
+          .date()
+          .describe("Date from which the analytics you want"),
+        endDate: z.coerce
+          .date()
+          .describe("Date upto which the analytics you want"),
+      },
+    },
 
-//       // const result = await analyticsService.getAnalyticsForUrlId(
-//       //   urlInfo.urlId,
-//       //   args.startDate,
-//       //   args.endDate,
-//       // );
+    withMcpErrorHandling(
+      async (args: { shortUrl: string; startDate: Date; endDate: Date }) => {
+        const urlInfo = await urlService.getUrlBelongsToUser(
+          args.shortUrl,
+          userId,
+        );
+        const result = await analyticsService.getAnalyticsForUrlId(
+          urlInfo.urlId,
+          args.startDate,
+          args.endDate,
+        );
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      },
+    ),
+  );
 
-//       // console.log("result = ",result);
+  server.registerTool(
+    "get_all_user_urls",
+    {
+      description: "Retrieves all urls created by a user",
+    },
+    // async () => {
+    //   const result = await urlService.getAllUrlsOfUser(userId, {});
 
-//       // return {
-//       //   content: [
-//       //     {
-//       //       type: "text",
-//       //       text: JSON.stringify(result),
-//       //     },
-//       //   ],
-//       // };
+    //   return {
+    //     content: [
+    //       {
+    //         type: "text",
+    //         text: JSON.stringify(result),
+    //       },
+    //     ],
+    //   };
+    // },
 
-//       try {
-//       const urlInfo = await urlService.getUrlBelongsToUser(args.shortUrl, userId);
-//       const result = await analyticsService.getAnalyticsForUrlId(
-//         urlInfo.urlId,
-//         args.startDate,
-//         args.endDate,
-//       );
-//       return { content: [{ type: "text", text: JSON.stringify(result) }] };
-//     } catch (error) {
-//       return toMcpError(error);
-//     }
-//     },
-//   );
+    withMcpErrorHandling(async () => {
+      const result = await urlService.getAllUrlsOfUser(userId, {});
 
-//   server.registerTool(
-//     "get_all_user_urls",
-//     {
-//       description: "Retrieves all urls created by a user",
-//     },
-//     async () => {
-//       const result = await urlService.getAllUrlsOfUser(userId, {});
-
-//       return {
-//         content: [
-//           {
-//             type: "text",
-//             text: JSON.stringify(result),
-//           },
-//         ],
-//       };
-//     },
-//   );
-// }
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    }),
+  );
+}

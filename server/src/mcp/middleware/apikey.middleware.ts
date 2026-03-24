@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { ApiKeyService } from "../services/apiKey.service";
-import { ApiKeyRepository } from "../repositories/apiKey.repository";
-import logger from "../config/logger.config";
+import { ApiKeyFactory } from "../../factories/apiKey.factory";
+import logger from "../../config/logger.config";
 
-const apiKeyService = new ApiKeyService(new ApiKeyRepository());
+const apiKeyService = ApiKeyFactory.getApiKeyService();
 
 export async function apiKeyMiddleware(
   req: Request,
