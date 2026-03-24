@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { ApiKeyRepository } from "../repositories/apiKey.repository";
-import { ApiKeyService } from "../services/apiKey.service";
 import {
   loggedInUserProcedure,
   publicProcedure,
@@ -8,9 +6,9 @@ import {
 import logger from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { ApiKeyStatus } from "../models/apiKey.model";
+import { ApiKeyFactory } from "../factories/apiKey.factory";
 
-const apiKeyRepository = new ApiKeyRepository();
-const apiKeyService = new ApiKeyService(apiKeyRepository);
+const apiKeyService =ApiKeyFactory.getApiKeyService();
 
 export const apiKeyController = {
   createApiKey: loggedInUserProcedure
@@ -33,7 +31,7 @@ export const apiKeyController = {
   getApiKeys: loggedInUserProcedure
     .query(async ({ ctx }) => {
       try {
-        const apiKeys = await apiKeyRepository.findApiKeysOfUser(ctx.user!.userId);
+        const apiKeys = await apiKeyService.getUserApiKeys(ctx.user!.userId);
         logger.info(`Fetched API keys for user ${ctx.user!.userId}`);
         return apiKeys;
       } catch (error) {

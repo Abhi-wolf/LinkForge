@@ -30,3 +30,27 @@ export function useUpdateUser() {
 
   return useMutation(trpc.auth.updateUser.mutationOptions());
 }
+
+export function useForgotPassword() {
+  const trpc = useTRPC();
+
+  return useMutation(trpc.auth.requestPasswordReset.mutationOptions());
+}
+
+export function useResetPassword() {
+  const trpc = useTRPC();
+
+  return useMutation(trpc.auth.resetPassword.mutationOptions());
+}
+
+export function useSendEmailVerification() {
+  const trpc = useTRPC();
+
+  return useMutation(trpc.auth.sendEmailVerification.mutationOptions());
+}
+
+export function useVerifyEmail() {
+  const trpc = useTRPC();
+
+  return useMutation(trpc.auth.verifyEmail.mutationOptions());
+}

@@ -41,13 +41,6 @@ export class AnalyticsService {
     const utcStartDates = getUTCRange(startDate, timezone);
     const utcEndDates = getUTCRange(endDate, timezone);
 
-    // console.log(
-    //   "UTC START : ",
-    //   utcStartDates.utcStart,
-    //   " UTC END : ",
-    //   utcEndDates.utcEnd,
-    // );
-
     const analytics =
       await this.analyticsRepository.getAggregatedAnalyticsForDate(
         urlId,

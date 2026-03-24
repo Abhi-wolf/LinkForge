@@ -62,8 +62,6 @@ export class AnalyticsRepository {
       },
     });
 
-    // console.log("START : ", start, " END : ", end);
-    // console.log("RAW ANALYTICS : ", rawAnalytics);
 
     logger.info(
       `Starting aggregating analytics for date range : ${start} - ${end}`
@@ -122,7 +120,6 @@ export class AnalyticsRepository {
         increment(urlAggregation.utmSource, analytics.utmSource);
       if (analytics.ref) increment(urlAggregation.ref, analytics.ref);
     }
-    // console.log("AGGREGATION MAP : ", aggregationMap);
 
     for (const [urlId, data] of aggregationMap) {
       await HourlyAggregatedAnalytics.create({
@@ -185,7 +182,6 @@ export class AnalyticsRepository {
         rawResult: true,
       });
 
-      console.log("createRawAnalyticsBatch RESULT : ", result);
 
       const validationErrors = result?.mongoose?.validationErrors || [];
 

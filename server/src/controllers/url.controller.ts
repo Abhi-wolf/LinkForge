@@ -12,10 +12,8 @@ import { handleAppError } from "../utils/errors/trpc.error";
 import { UrlStatus } from "../models/url.model";
 import { getCorrelationId } from "../utils/helpers/request.helpers";
 import { UrlFactory } from "../factories/url.factory";
-import { AnalyticsFactory } from "../factories/analytics.factory";
 
 const urlService = UrlFactory.getUrlService();
-const analyticsService = AnalyticsFactory.getAnalyticsService();
 
 export const urlController = {
   create: authProcedure
@@ -142,8 +140,6 @@ export async function redirectUrl(req: Request, res: Response) {
 
   const geo = geoip.lookup(ip);
 
-  // console.log("Parsed User Agent = ", result);
-  // console.log("LOCATION DETAILS = ", ip, geo);
 
   const location = {
     country: geo?.country || "unknown",
@@ -191,42 +187,4 @@ export async function redirectUrl(req: Request, res: Response) {
   res.redirect(url.originalUrl);
 }
 
-export async function getAnalyticsForUrlId(req: Request, res: Response) {
-  const { urlId } = req.params;
-  const { startDate, endDate, timezone } = req.query;
 
-  // console.log(
-  //   "URL ID : ",
-  //   urlId,
-  //   " START DATE : ",
-  //   startDate,
-  //   " END DATE : ",
-  //   endDate,
-  //   " TIMEZONE : ",
-  //   timezone,
-  // );
-
-  if (
-    typeof startDate !== "string" ||
-    typeof endDate !== "string" ||
-    typeof timezone !== "string"
-  ) {
-    res.status(400).json({
-      success: false,
-      message: "Date and timezone are required",
-    });
-    return;
-  }
-
-  const analytics = await analyticsService.getAggregatedAnalyticsForDate(
-    urlId,
-    startDate,
-    endDate,
-    timezone,
-  );
-
-  res.status(200).json({
-    success: true,
-    data: analytics,
-  });
-}

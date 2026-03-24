@@ -17,6 +17,19 @@ type ServerConfig = {
   URL_EXPIRY_SCHEDULER: string;
   ANALYTICS_DEAD_LETTER_QUEUE: string;
   AGGREGATION_ANALYTICS_SCHEDULER: string;
+  EMAIL_TRANSPORTER: string;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_SECURE: string;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  EMAIL_FROM_ADDRESS: string;
+  EMAIL_FROM_NAME: string;
+  EMAIL_TEMPLATES_PATH: string;
+  VERIFICATION_TOKEN_EXPIRE: string;
+  RESET_TOKEN_EXPIRE: string;
+  EMAIL_REQUEST_RATE_LIMIT: number;
+  CLIENT_URL: string;
 };
 
 function loadEnv() {
@@ -45,4 +58,18 @@ export const serverConfig: ServerConfig = {
 
   URL_EXPIRY_SCHEDULER:
     process.env.URL_EXPIRY_SCHEDULER || "url_expiry_scheduler",
+  
+  EMAIL_TRANSPORTER: process.env.EMAIL_TRANSPORTER || "gmail",
+  SMTP_HOST: process.env.SMTP_HOST || "localhost",
+  SMTP_PORT: Number(process.env.SMTP_PORT) || 587,
+  SMTP_SECURE: process.env.SMTP_SECURE || "false",
+  SMTP_USER: process.env.SMTP_USER || "",
+  SMTP_PASS: process.env.SMTP_PASS || "",
+  EMAIL_FROM_ADDRESS: process.env.EMAIL_FROM_ADDRESS || "noreply@linkforge.com",
+  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || "LinkForge",
+  EMAIL_TEMPLATES_PATH: process.env.EMAIL_TEMPLATES_PATH || "./src/utils/email-templates",
+  VERIFICATION_TOKEN_EXPIRE: process.env.VERIFICATION_TOKEN_EXPIRE || "24h",
+  RESET_TOKEN_EXPIRE: process.env.RESET_TOKEN_EXPIRE || "30m",
+  EMAIL_REQUEST_RATE_LIMIT: Number(process.env.EMAIL_REQUEST_RATE_LIMIT) || 3,
+  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:3000",
 };

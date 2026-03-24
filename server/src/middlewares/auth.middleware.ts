@@ -5,21 +5,9 @@ import { serverConfig } from "../config";
 
 export function isAuthenticated() {
   return t.middleware(async ({ ctx, next }) => {
-    // console.log("Checking authentication for request:", ctx.req.cookies.accessToken);
-    // console.log("Authorization header:", ctx.req.headers.authorization);
-
-    // if (!ctx.req.headers.authorization) {
-    //   throw new TRPCError({
-    //     code: "UNAUTHORIZED",
-    //     message: "No authorization header provided",
-    //   });
-    // }
-
     const token =
       ctx.req.headers?.authorization?.split(" ")[1] ||
       ctx.req.cookies.accessToken;
-
-    // console.log("Extracted token:", token);
 
     if (!token) {
       throw new TRPCError({
@@ -41,8 +29,6 @@ export function isAuthenticated() {
         tokenVersion: number;
       };
 
-      // console.log("Decoded token:", decoded);
-
       ctx.user = decoded;
       return next({ ctx });
     } catch (err) {
@@ -56,13 +42,6 @@ export function isAuthenticated() {
 
 export function attachUserIfPresent() {
   return t.middleware(async ({ ctx, next }) => {
-    // if (!ctx.req.headers.authorization) {
-    //   throw new TRPCError({
-    //     code: "UNAUTHORIZED",
-    //     message: "No authorization header provided",
-    //   });
-    // }
-
     const token =
       ctx.req.headers?.authorization?.split(" ")[1] ||
       ctx.req.cookies.accessToken;

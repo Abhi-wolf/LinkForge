@@ -26,7 +26,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { useAuthStore } from "@/store/authStore";
 import { useRegister } from "@/hooks/useAuth";
 
 const registerSchema = z.object({
@@ -40,7 +39,6 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function Register() {
   const navigate = useNavigate();
   const { mutate: registerUser } = useRegister();
-  const setLogin = useAuthStore((state) => state.login);
   const [isLoading] = useState(false);
 
   const form = useForm<RegisterValues>({
@@ -55,11 +53,10 @@ export default function Register() {
   const onSubmit = async (values: RegisterValues) => {
     registerUser(values, {
       onSuccess: (data) => {
-        if (data.refreshToken) {
-          setLogin({ refreshToken: data.refreshToken });
+        if(data.user.email) {
+          toast.success("Account created successfully!");
+          navigate("/login");
         }
-        toast.success("Account created successfully!");
-        navigate("/dashboard");
       },
       onError: (err) => {
         toast.error(err.message || "Registration failed");

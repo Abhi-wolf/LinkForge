@@ -17,7 +17,7 @@ export const refreshTokenFunc = async (refreshToken: string) => {
       success: true,
     };
   } catch (error) {
-    console.log("REFRESH TOKEN ERROR = ", error);
+    console.error("REFRESH TOKEN ERROR = ", error);
     return {
       refreshToken: null,
       success: false,

@@ -11,4 +11,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    global: "globalThis",
+    process: {
+      env: {
+        NODE_ENV: "development",
+      },
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@trpc/server"],
+  },
 })

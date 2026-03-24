@@ -1,15 +1,14 @@
 import { z } from "zod";
-import { UserRepository } from "../repositories/user.repository";
-import { AuthService } from "../services/user.service";
 import {
   loggedInUserProcedure,
   publicProcedure,
 } from "../routers/trpc/context";
 import logger from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
+import { AuthFactory } from "../factories/auth.factory";
 
-const userRepository = new UserRepository();
-const authService = new AuthService(userRepository);
+
+const authService = AuthFactory.getAuthService();
 
 export const authController = {
   register: publicProcedure
@@ -41,7 +40,7 @@ export const authController = {
     .mutation(async ({ input, ctx }) => {
       try {
         const result = await authService.login(input);
-        logger.info("User logged in", result);
+        // logger.info("User logged in", result);
 
         ctx.res.cookie("accessToken", result.accessToken, {
           httpOnly: true,
@@ -123,4 +122,73 @@ export const authController = {
       handleAppError(error);
     }
   }),
+
+  sendEmailVerification: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await authService.sendEmailVerification(input.email);
+        logger.info(`Email verification sent for email: ${input.email}`);
+        return result;
+      } catch (error) {
+        logger.error(`Error sending email verification: `, error);
+        handleAppError(error);
+      }
+    }),
+
+  verifyEmail: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await authService.verifyEmail(input.token);
+        logger.info(`Email verified with token: ${input.token.substring(0, 8)}...`);
+        return result;
+      } catch (error) {
+        logger.error(`Error verifying email: `, error);
+        handleAppError(error);
+      }
+    }),
+
+  requestPasswordReset: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await authService.requestPasswordReset(input.email);
+        logger.info(`Password reset requested for email: ${input.email}`);
+        return result;
+      } catch (error) {
+        logger.error(`Error requesting password reset: `, error);
+        handleAppError(error);
+      }
+    }),
+
+  resetPassword: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        newPassword: z.string().min(6),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await authService.resetPassword(input.token, input.newPassword);
+        logger.info(`Password reset completed with token: ${input.token.substring(0, 8)}...`);
+        return result;
+      } catch (error) {
+        logger.error(`Error resetting password: `, error);
+        handleAppError(error);
+      }
+    }),
 };

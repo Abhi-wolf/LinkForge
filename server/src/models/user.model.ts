@@ -8,6 +8,11 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   roles: UserRole;
+  emailVerified: boolean;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
 }
 
 export enum UserRole {
@@ -41,6 +46,26 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.USER,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
     },
   },
   {

@@ -30,6 +30,11 @@ export class ApiKeyService {
     return await this.apiKeyRepository.findApiKey(hashedKey);
   }
 
+  async getUserApiKeys(userId:string) {
+    const apiKeys = await this.apiKeyRepository.findApiKeysOfUser(userId);
+    return apiKeys;
+  }
+
   async updateApiKeyStatus(id: string, status: string, userId: string) {
     // Find the API key and verify ownership
     const apiKey = await this.apiKeyRepository.findApiKeyById(id);

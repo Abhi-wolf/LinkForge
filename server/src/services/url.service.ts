@@ -162,7 +162,6 @@ export class UrlService {
   }
 
   async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
-    // console.log("Updating URL with data:", { id, data, userId });
 
     if (data.shortUrl) {
       throw new ForbiddenError("Short URL cannot be updated");
@@ -245,14 +244,11 @@ export class UrlService {
   async getUrlBelongsToUser(shortUrl: string, userId: string) {
     const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
-    console.log("existingUrl = ",existingUrl);
 
     if (!existingUrl) {
       throw new NotFoundError("Url not found");
     }
 
-    console.log("existingUrl.userId = ",existingUrl.userId);
-    console.log("userId = ",userId);
 
     if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
       throw new ForbiddenError("You do not have permission to access this URL");

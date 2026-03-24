@@ -11,6 +11,9 @@ import { Toaster } from "./components/ui/sonner";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import EmailVerification from "./pages/EmailVerification";
 import DashboardLayout from "./pages/Dashboard/DashboardLayout";
 import DashboardOverview from "./pages/Dashboard/DashboardOverview";
 import MyLinks from "./pages/Dashboard/MyLinks";
@@ -75,6 +78,18 @@ const router = createBrowserRouter([
   {
     path: "/register",
     element: <Register />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
+  },
+  {
+    path: "/verify-email",
+    element: <EmailVerification />,
   },
   {
     path: "/dashboard",

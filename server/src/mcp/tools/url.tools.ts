@@ -3,6 +3,7 @@ import { z } from "zod";
 import { UrlFactory } from "../../factories/url.factory";
 import { withMcpErrorHandling } from "../utils/mcp.error";
 import { AnalyticsFactory } from "../../factories/analytics.factory";
+import logger from "../../config/logger.config";
 
 const urlService = UrlFactory.getUrlService();
 const analyticsService = AnalyticsFactory.getAnalyticsService();
@@ -18,26 +19,6 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
         expirationDate: z.coerce.date().optional(),
       },
     },
-    // async (args: {
-    //   originalUrl: string;
-    //   tags?: string[];
-    //   expirationDate?: Date;
-    // }) => {
-    //   const result = await urlService.createShortUrl({
-    //     originalUrl: args.originalUrl,
-    //     tags: args.tags,
-    //     expirationDate: args.expirationDate,
-    //   },userId);
-
-    //   return {
-    //     content: [
-    //       {
-    //         type: "text",
-    //         text: JSON.stringify(result),
-    //       },
-    //     ],
-    //   };
-    // },
 
     withMcpErrorHandling(
       async (args: {
@@ -45,6 +26,11 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
         tags?: string[];
         expirationDate?: Date;
       }) => {
+        logger.info("create_short_url tool invoked", {
+          userId,
+          originalUrl: args.originalUrl,
+        });
+
         const result = await urlService.createShortUrl(
           {
             originalUrl: args.originalUrl,
@@ -53,6 +39,11 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
           },
           userId,
         );
+
+        logger.info("short url created successfully", {
+          userId,
+          shortUrl: result.shortUrl,
+        });
 
         return {
           content: [
@@ -74,21 +65,19 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
         shortUrl: z.string().describe("The short URL ID"),
       },
     },
-    // async (args: { shortUrl: string }) => {
-    //   const result = await urlService.getOriginalUrl(args.shortUrl);
-
-    //   return {
-    //     content: [
-    //       {
-    //         type: "text",
-    //         text: JSON.stringify(result),
-    //       },
-    //     ],
-    //   };
-    // },
 
     withMcpErrorHandling(async (args: { shortUrl: string }) => {
+      logger.info("get_original_url tool invoked", {
+        userId,
+        originalUrl: args.shortUrl,
+      });
+
       const result = await urlService.getOriginalUrl(args.shortUrl);
+
+      logger.info("original url fetched successfully", {
+        userId,
+        originalUrl: args.shortUrl,
+      });
 
       return {
         content: [
@@ -118,15 +107,30 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
 
     withMcpErrorHandling(
       async (args: { shortUrl: string; startDate: Date; endDate: Date }) => {
+        logger.info("get_analytics_info_about_a_url tool invoked", {
+          userId,
+          shortUrl: args.shortUrl,
+          startDate: args.startDate,
+          endDate: args.endDate,
+        });
+
         const urlInfo = await urlService.getUrlBelongsToUser(
           args.shortUrl,
           userId,
         );
+
         const result = await analyticsService.getAnalyticsForUrlId(
           urlInfo.urlId,
           args.startDate,
           args.endDate,
         );
+
+        logger.info("analytics info fetched successfully", {
+          userId,
+          shortUrl: args.shortUrl,
+          startDate: args.startDate,
+          endDate: args.endDate,
+        });
         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       },
     ),
@@ -137,21 +141,17 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
     {
       description: "Retrieves all urls created by a user",
     },
-    // async () => {
-    //   const result = await urlService.getAllUrlsOfUser(userId, {});
-
-    //   return {
-    //     content: [
-    //       {
-    //         type: "text",
-    //         text: JSON.stringify(result),
-    //       },
-    //     ],
-    //   };
-    // },
 
     withMcpErrorHandling(async () => {
+      logger.info("get_all_user_urls tool invoked", {
+        userId,
+      });
+
       const result = await urlService.getAllUrlsOfUser(userId, {});
+
+      logger.info("get_all_user_urls fetched successfully ", {
+        userId,
+      });
 
       return {
         content: [
