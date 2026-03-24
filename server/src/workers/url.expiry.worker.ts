@@ -3,10 +3,11 @@ import { createNewRedisConnection } from "../config/redis";
 import { serverConfig } from "../config";
 import Url, { UrlStatus } from "../models/url.model";
 import logger from "../config/logger.config";
-import { CacheRepository } from "../repositories/cache.repository";
+import { UrlFactory } from "../factories/url.factory";
 
 async function setUpUrlExpiryWorker() {
-  const cacheRepository = new CacheRepository();
+  const cacheRepository = UrlFactory.getCacheRepository();
+  
   const worker = new Worker(
     serverConfig.URL_EXPIRY_SCHEDULER,
     async (job) => {

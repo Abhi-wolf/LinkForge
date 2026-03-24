@@ -2,9 +2,9 @@ import { Job, Worker } from "bullmq";
 import { serverConfig } from "../config";
 import { createNewRedisConnection } from "../config/redis";
 import logger from "../config/logger.config";
-import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { asyncLocalStorage } from "../utils/helpers/request.helpers";
 import { analyticsDeadLetterQueue } from "../queues/analytics.queue";
+import { AnalyticsFactory } from "../factories/analytics.factory";
 
 /* async function setUpAnalyticsWorker() {
   const analyticsService = new AnalyticsService(
@@ -82,7 +82,7 @@ import { analyticsDeadLetterQueue } from "../queues/analytics.queue";
 // batching the job and inserting in bulk
 async function setUpAnalyticsWorker() {
 
-  const analyticsRepository = new AnalyticsRepository();
+  const analyticsRepository = AnalyticsFactory.getAnalyticsRepository();
 
   // batching the job and inserting in bulk
   let batch: any[] = [];

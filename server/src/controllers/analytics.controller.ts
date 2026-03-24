@@ -4,15 +4,10 @@ import {
   publicProcedure,
 } from "../routers/trpc/context";
 import logger from "../config/logger.config";
-import { AnalyticsService } from "../services/analytics.service";
-import { AnalyticsRepository } from "../repositories/analytics.repository";
-import { UrlRepository } from "../repositories/url.repository";
 import { handleAppError } from "../utils/errors/trpc.error";
+import { AnalyticsFactory } from "../factories/analytics.factory";
 
-const analyticsService = new AnalyticsService(
-  new AnalyticsRepository(),
-  new UrlRepository(),
-);
+const analyticsService = AnalyticsFactory.getAnalyticsService();
 
 export const analyticsController = {
   getAnalytics: publicProcedure

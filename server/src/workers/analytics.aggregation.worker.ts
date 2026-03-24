@@ -2,14 +2,9 @@ import { Worker } from "bullmq";
 import { serverConfig } from "../config";
 import { createNewRedisConnection } from "../config/redis";
 import logger from "../config/logger.config";
-import { AnalyticsRepository } from "../repositories/analytics.repository";
-import { AnalyticsService } from "../services/analytics.service";
-import { UrlRepository } from "../repositories/url.repository";
+import { AnalyticsFactory } from "../factories/analytics.factory";
 
-const analyticsService = new AnalyticsService(
-  new AnalyticsRepository(),
-  new UrlRepository(),
-);
+const analyticsService = AnalyticsFactory.getAnalyticsService();
 
 async function setUpAggregationAnalyticsWorker() {
   const worker = new Worker(

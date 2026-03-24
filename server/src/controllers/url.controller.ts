@@ -1,8 +1,5 @@
 import { z } from "zod";
 import { authProcedure, loggedInUserProcedure } from "../routers/trpc/context";
-import { UrlService } from "../services/url.service";
-import { UrlRepository } from "../repositories/url.repository";
-import { CacheRepository } from "../repositories/cache.repository";
 import logger from "../config/logger.config";
 import type { Request, Response } from "express";
 import { UAParser } from "ua-parser-js";
@@ -11,21 +8,14 @@ import {
   addAnalyticsJob,
   type IAnalyticsJob,
 } from "../producers/analytics.producer";
-import { AnalyticsService } from "../services/analytics.service";
-import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { UrlStatus } from "../models/url.model";
 import { getCorrelationId } from "../utils/helpers/request.helpers";
+import { UrlFactory } from "../factories/url.factory";
+import { AnalyticsFactory } from "../factories/analytics.factory";
 
-const urlService = new UrlService(
-  new UrlRepository(),
-  new CacheRepository(),
-  new AnalyticsRepository(),
-);
-const analyticsService = new AnalyticsService(
-  new AnalyticsRepository(),
-  new UrlRepository(),
-);
+const urlService = UrlFactory.getUrlService();
+const analyticsService = AnalyticsFactory.getAnalyticsService();
 
 export const urlController = {
   create: authProcedure
