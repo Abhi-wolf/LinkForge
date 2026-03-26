@@ -6,6 +6,7 @@ import logger from "./config/logger.config";
 import { registerUrlShortenerTools } from "./mcp/tools/url.tools";
 import { apiKeyMiddleware } from "./mcp/middleware/apikey.middleware";
 import { attachCorrelationIdMiddleware } from "./middlewares/correlation.middleware";
+import { serverConfig } from "./config";
 
 const app = express();
 app.use(cors());
@@ -107,12 +108,12 @@ export async function startMcpServer() {
     }
   });
 
-  app.listen(4200, () => {
+  app.listen(serverConfig.MCP_SERVER_PORT, () => {
     logger.info("MCP SSE server running", {
-      url: "http://localhost:4200",
-      sse: "http://localhost:4200/sse",
-      messages: "http://localhost:4200/messages",
-      environment: process.env.NODE_ENV,
+      url: `http://localhost:${serverConfig.MCP_SERVER_PORT}`,
+      sse: `http://localhost:${serverConfig.MCP_SERVER_PORT}/sse`,
+      messages: `http://localhost:${serverConfig.MCP_SERVER_PORT}/messages`,
+      environment: serverConfig.NODE_ENV,
     });
   });
 }

@@ -42,7 +42,7 @@ export function createRateLimitMiddleware(
 
 export const strictRateLimiter = createRateLimitMiddleware({
   windowMs: 60000,
-  limit: 100,
+  limit: 40,
 });
 export const normalRateLimiter = createRateLimitMiddleware({
   windowMs: 60000,
@@ -50,5 +50,5 @@ export const normalRateLimiter = createRateLimitMiddleware({
 });
 export const relaxedRateLimiter = createRateLimitMiddleware({
   windowMs: 60000,
-  limit: 1000,
+  limit: 50,
 });

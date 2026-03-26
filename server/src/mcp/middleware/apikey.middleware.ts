@@ -24,6 +24,7 @@ export async function apiKeyMiddleware(
       return;
     }
 
+    
     (req as any).user = apiKeyData.userId;
 
     next();

@@ -77,8 +77,8 @@ url-shortener/
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd url-shortener
+   https://github.com/Abhi-wolf/LinkForge.git
+   cd LinkForge
    ```
 
 2. **Start the application**
@@ -106,14 +106,33 @@ The server is configured with the following environment variables in `compose.ya
 
 ```yaml
 environment:
-  - PORT=4000
-  - DB_URL=mongodb://mongo:27017/url_shortener
-  - REDIS_URL=redis://redis:6379
-  - REDIS_COUNTER_KEY=url_shortener_counter
-  - NODE_ENV=production
-  - BASE_URL=http://localhost:4000
-  - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-  - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+   -  PORT=4000
+   -  DB_URL=mongodb://localhost:27017/url_shortener
+   -  REDIS_URL=redis://localhost:6379
+   -  REDIS_COUNTER_KEY=url_shortener_counter
+   -  BASE_URL=http://localhost:4000
+   -  NODE_ENV=development
+   -  ANALYTICS_QUEUE=analytics_queue
+   -  JWT_ACCESS_SECRET=access_secret_123
+   -  JWT_REFRESH_SECRET=refresh_secret_123
+   -  ACCESS_TOKEN_EXPIRE=10m
+   -  REFRESH_TOKEN_EXPIRE=7d
+   -  URL_EXPIRY_SCHEDULER=url_expiry_scheduler
+   -  ANALYTICS_DEAD_LETTER_QUEUE=analytics_dead_letter_queue
+   -  AGGREGATION_ANALYTICS_SCHEDULER=aggregation_analytics_scheduler
+   -  EMAIL_TRANSPORTER=gmail
+   -  SMTP_HOST=localhost
+   -  SMTP_PORT=587
+   -  SMTP_SECURE=false
+   -  SMTP_USER=""
+   -  SMTP_PASS=""
+   -  EMAIL_FROM_ADDRESS=noreply@linkforge.com
+   -  EMAIL_FROM_NAME=LinkForge
+   -  EMAIL_TEMPLATES_PATH=./src/utils/email-templates
+   -  VERIFICATION_TOKEN_EXPIRE=24h
+   -  RESET_TOKEN_EXPIRE=30m
+   -  EMAIL_REQUEST_RATE_LIMIT=3
+   -  CLIENT_URL=http://localhost:3000
 ```
 
 ⚠️ **Security Note**: Update the JWT secrets before deploying to production.
@@ -138,7 +157,7 @@ The MCP server exposes the following tools:
 
 1. **create_short_url**
    - Creates a short URL from an original URL
-   - Input: `{ originalUrl: string }`
+   - Input: `{ originalUrl: string, tags?: [string],expirationDate?: Date }`
 
 2. **get_original_url**
    - Retrieves the original URL from a short URL ID
@@ -171,7 +190,7 @@ The MCP server requires an API key for authentication. To generate an API key:
 
 2. Open your browser and navigate to:
    ```
-   http://localhost:4200/sse?api-key=YOUR_API_KEY
+   http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=
    ```
 
 3. The inspector UI will allow you to test all available tools.

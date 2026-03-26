@@ -45,7 +45,7 @@ export const authController = {
         ctx.res.cookie("accessToken", result.accessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
+          sameSite: "strict",
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
@@ -70,7 +70,7 @@ export const authController = {
         ctx.res.cookie("accessToken", tokens.accessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
+          sameSite: "strict",
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
