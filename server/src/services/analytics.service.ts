@@ -66,7 +66,7 @@ export class AnalyticsService {
         id: link.id,
         shortUrl: link.shortUrl,
         originalUrl: link.originalUrl,
-        fullUrl: `${baseUrl}/${link.shortUrl}`,
+        fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
         createdAt: link.createdAt,
         status: link.status,
       }));
@@ -77,7 +77,7 @@ export class AnalyticsService {
         id: link.id,
         shortUrl: link.shortUrl,
         originalUrl: link.originalUrl,
-        fullUrl: `${baseUrl}/${link.shortUrl}`,
+        fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
         createdAt: link.createdAt,
         status: link.status,
       }));
@@ -92,7 +92,7 @@ export class AnalyticsService {
       id: link.id,
       shortUrl: link.shortUrl,
       originalUrl: link.originalUrl,
-      fullUrl: `${baseUrl}/${link.shortUrl}`,
+      fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
       createdAt: link.createdAt,
       status: link.status,
     }));
@@ -112,7 +112,7 @@ export class AnalyticsService {
         id: url.id,
         shortUrl: url.shortUrl,
         clicks: urlClicks,
-        fullUrl: `${baseUrl}/${url.shortUrl}`,
+        fullUrl: `${baseUrl}/fwd/${url.shortUrl}`,
         originalUrl: url.originalUrl,
         status: url.status,
       });

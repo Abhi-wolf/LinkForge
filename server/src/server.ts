@@ -1,91 +1,13 @@
-import express, { Request, Response } from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-
-import { createBullBoard } from '@bull-board/api';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { ExpressAdapter } from '@bull-board/express';
-
-import { serverConfig } from "./config";
+import { createApp } from "./app/app";
+import { serverSettings } from "./config/server";
 import logger from "./config/logger.config";
-import { attachCorrelationIdMiddleware } from "./middlewares/correlation.middleware";
-import { checkRedis, closeRedis, initRedis } from "./config/redis";
-import { checkMongo, connectDB, disconnectDB } from "./config/db";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { trpcRouter } from "./routers/trpc";
-import { createContext } from "./routers/trpc/trpc";
-import { startAnalyticsWorker } from "./workers/analytics.worker";
-import { startAnalyticsAggregationScheduler } from "./queues/analytics.aggregation.scheduler";
-import { startUrlExpiryWorker } from "./workers/url.expiry.worker";
-import { startUrlExpirySchedulaer } from "./queues/url.expiry.scheduler";
-import { startAggregationAnalyticsWorker } from "./workers/analytics.aggregation.worker";
-import { redirectUrl } from "./controllers/url.controller";
-import { analyticsDeadLetterQueue, analyticsQueue } from "./queues/analytics.queue";
+import { initializeServices, shutdownServices } from "./app/bootstrap";
 import {
   appErrorHandler,
   genericErrorHandler,
 } from "./middlewares/error.middleware";
-import { startMcpServer } from "./mcp.server";
 
-const app = express();
-
-app.use(express.json());
-
-app.use(cookieParser());
-
-app.use(
-  cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], // e.g., http://localhost:5173
-    credentials: true,
-  }),
-);
-
-/**
- * Registering all the routers and their corresponding routes with out app server object.
- */
-
-app.use(attachCorrelationIdMiddleware);
-
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: trpcRouter,
-    createContext,
-  }),
-);
-
-
-app.get("/health-check", async (req: Request, res: Response) => {
-  const checks = {
-    database: await checkMongo(),
-    redis: await checkRedis(),
-    memory: process.memoryUsage(),
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  };
-  
-  const isHealthy = Object.values(checks).every(check => 
-    typeof check === 'boolean' ? check : true
-  );
-  
-  res.status(isHealthy ? 200 : 503).json({
-    status: isHealthy ? 'healthy' : 'unhealthy',
-    checks
-  });
-});
-
-const serverAdapter = new ExpressAdapter();
-serverAdapter.setBasePath('/ui');
-
-createBullBoard({
-  queues: [new BullMQAdapter(analyticsQueue), new BullMQAdapter(analyticsDeadLetterQueue)],
-  serverAdapter,
-});
-
-app.use('/ui', serverAdapter.getRouter());
-
-
-app.get("/:shortUrl", redirectUrl);
+const app = createApp();
 
 /**
  * Add the error handler middleware
@@ -94,31 +16,30 @@ app.get("/:shortUrl", redirectUrl);
 app.use(appErrorHandler);
 app.use(genericErrorHandler);
 
-app.listen(serverConfig.PORT, async () => {
-  logger.info(`Server is running on http://localhost:${serverConfig.PORT}`);
+const server = app.listen(serverSettings.port, async () => {
+  logger.info(`Server is running on http://localhost:${serverSettings.port}`);
   logger.info(`Press Ctrl+C to stop the server.`);
 
-  await initRedis();
-  await connectDB();
-  await startAnalyticsWorker();
+  // Set server timeouts
+  server.timeout = serverSettings.timeout;
+  server.keepAliveTimeout = serverSettings.keepAliveTimeout;
+  server.headersTimeout = serverSettings.headersTimeout;
 
-  await startAnalyticsAggregationScheduler();
-  await startAggregationAnalyticsWorker();
-
-  await startUrlExpirySchedulaer();
-  await startUrlExpiryWorker();
-
-  await startMcpServer();
+  await initializeServices();
 });
 
 process.on("SIGINT", async () => {
-  await closeRedis();
-  await disconnectDB();
-  process.exit(0);
+  logger.info("Received SIGINT, shutting down gracefully...");
+  server.close(async () => {
+    await shutdownServices();
+    process.exit(0);
+  });
 });
 
 process.on("SIGTERM", async () => {
-  await closeRedis();
-  await disconnectDB();
-  process.exit(0);
+  logger.info("Received SIGTERM, shutting down gracefully...");
+  server.close(async () => {
+    await shutdownServices();
+    process.exit(0);
+  });
 });

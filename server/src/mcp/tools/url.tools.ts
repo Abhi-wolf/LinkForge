@@ -14,8 +14,14 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
     {
       description: "Creates a short URL",
       inputSchema: {
-        originalUrl: z.string().describe("The original URL to be shortened"),
-        tags: z.array(z.string()).optional(),
+        originalUrl: z
+          .string()
+          .describe("The original URL to be shortened")
+          .max(2048, "URL too long (max 2048 characters)"),
+        tags: z
+          .array(z.string())
+          .max(3, "Tags too long (max 3 tags)")
+          .optional(),
         expirationDate: z.coerce.date().optional(),
       },
     },
@@ -62,7 +68,11 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
     {
       description: "Retrieves the original URL from a short URL ID",
       inputSchema: {
-        shortUrl: z.string().describe("The short URL ID"),
+        shortUrl: z
+          .string()
+          .describe("The short URL ID")
+          .min(1, "Short URL is required")
+          .max(10, "Short URL is invalid"),
       },
     },
 
@@ -95,7 +105,11 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
     {
       description: "Retrieves analytics info about a short url",
       inputSchema: {
-        shortUrl: z.string().describe("The short URL ID"),
+        shortUrl: z
+          .string()
+          .describe("The short URL is required")
+          .min(1, "Short URL is required")
+          .max(10, "Short URL is invalid"),
         startDate: z.coerce
           .date()
           .describe("Date from which the analytics you want"),

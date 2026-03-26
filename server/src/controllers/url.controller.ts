@@ -51,8 +51,15 @@ export const urlController = {
     .input(
       z.object({
         id: z.string().min(24, "ID is required"),
-        originalUrl: z.string().url("Invalid URL").optional(),
-        tags: z.array(z.string()).optional(),
+        originalUrl: z
+          .string()
+          .url("Invalid URL")
+          .max(2048, "URL too long (max 2048 characters)")
+          .optional(),
+        tags: z
+          .array(z.string())
+          .max(3, "Tags too long (max 3 tags)")
+          .optional(),
         expirationDate: z.coerce.date().optional(),
         status: z.nativeEnum(UrlStatus).optional(),
       }),
@@ -79,7 +86,7 @@ export const urlController = {
   delete: loggedInUserProcedure
     .input(
       z.object({
-        id: z.string().min(24, "ID is required"),
+        id: z.string().min(24, "ID is required").max(24, "ID is invalid"),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -95,7 +102,10 @@ export const urlController = {
   getOriginalUrl: loggedInUserProcedure
     .input(
       z.object({
-        shortUrl: z.string().min(1, "Short URL is required"),
+        shortUrl: z
+          .string()
+          .min(1, "Short URL is required")
+          .max(10, "Short URL is invalid"), // TODO: check the max-length
       }),
     )
     .query(async ({ input }) => {
@@ -112,11 +122,11 @@ export const urlController = {
     .input(
       z
         .object({
-          search: z.string().optional(),
+          search: z.string().max(100, "Search is too long").optional(),
           status: z.nativeEnum(UrlStatus).optional(),
           startDate: z.coerce.date().optional(),
           endDate: z.coerce.date().optional(),
-          limit: z.number().int().min(1).optional(),
+          limit: z.number().int().min(1).max(100).optional(),
           offset: z.number().int().min(0).optional(),
         })
         .optional(),

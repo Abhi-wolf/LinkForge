@@ -46,6 +46,8 @@ const apiKeySchema = new mongoose.Schema(
   },
 );
 
+apiKeySchema.index({ userId: 1 });        // one user → many keys
+apiKeySchema.index({ apiKey: 1 }, { unique: true }); // each key is unique
 
 const ApiKey = mongoose.model<IApiKey>("ApiKey", apiKeySchema);
 

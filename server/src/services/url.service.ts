@@ -70,7 +70,7 @@ export class UrlService {
     });
 
     const baseUrl = serverConfig.BASE_URL;
-    const fullUrl = `${baseUrl}/${url!.shortUrl}`;
+    const fullUrl = `${baseUrl}/fwd/${url!.shortUrl}`;
 
     return {
       id: url!._id?.toString(),
@@ -154,7 +154,7 @@ export class UrlService {
         id: url._id?.toString(),
         originalUrl: url.originalUrl,
         shortUrl: url.shortUrl,
-        fullUrl: `${baseUrl}/${url.shortUrl}`,
+        fullUrl: `${baseUrl}/fwd/${url.shortUrl}`,
         tags: url.tags,
         status: url.status,
         expirationDate: url.expirationDate,

@@ -15,8 +15,14 @@ export const authController = {
     .input(
       z.object({
         email: z.string().email(),
-        password: z.string().min(6),
-        name: z.string().min(2),
+        password: z
+          .string()
+          .min(6)
+          .max(50, "Password cannot be more than 50 characters"),
+        name: z
+          .string()
+          .min(2)
+          .max(50, "Name cannot be more than 50 characters"),
       }),
     )
     .mutation(async ({ input }) => {
@@ -34,7 +40,9 @@ export const authController = {
     .input(
       z.object({
         email: z.string().email(),
-        password: z.string(),
+        password: z
+          .string()
+          .max(50, "Password cannot be more than 50 characters"),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -96,8 +104,16 @@ export const authController = {
   updateUser: loggedInUserProcedure
     .input(
       z.object({
-        name: z.string().min(2).optional(),
-        password: z.string().min(6).optional(),
+        name: z
+          .string()
+          .min(2)
+          .max(50, "Name cannot be more than 50 characters")
+          .optional(),
+        password: z
+          .string()
+          .min(6)
+          .max(50, "Password cannot be more than 50 characters")
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -181,7 +197,10 @@ export const authController = {
     .input(
       z.object({
         token: z.string(),
-        newPassword: z.string().min(6),
+        newPassword: z
+          .string()
+          .min(6)
+          .max(50, "Password cannot be more than 50 characters"),
       }),
     )
     .mutation(async ({ input }) => {

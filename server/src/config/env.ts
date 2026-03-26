@@ -16,6 +16,7 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   APP_NAME: z.string().default("LinkForge"),
+  APP_VERSION: z.string().default("1.0.0"),
   DB_URL: z.string().min(1, "MONGO_URI is required"),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   BASE_URL: z.string().min(1, "BASE_URL is required"),
@@ -56,6 +57,18 @@ const envSchema = z.object({
 
   EMAIL_REQUEST_RATE_LIMIT: z.coerce.number().default(3),
   CLIENT_URL: z.string().default("http://localhost:3000"),
+  
+  // Server configuration
+  SERVER_TIMEOUT: z.coerce.number().default(30000),
+  KEEP_ALIVE_TIMEOUT: z.coerce.number().default(65000),
+  HEADERS_TIMEOUT: z.coerce.number().default(66000),
+  MAX_CONNECTIONS: z.coerce.number().default(1000),
+  
+  // Health check configuration
+  HEALTH_CHECK_TIMEOUT: z.coerce.number().default(5000),
+  
+  // CORS configuration
+  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:5174,http://localhost:3000"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

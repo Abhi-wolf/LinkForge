@@ -13,7 +13,10 @@ export const analyticsController = {
   getAnalytics: publicProcedure
     .input(
       z.object({
-        urlId: z.string().min(24, "URL ID is required"),
+        urlId: z
+          .string()
+          .min(24, "URL ID is required")
+          .max(24, "URL ID is invalid"),
         startDate: z.coerce.date(), // ✅ converts ISO string → Date
         endDate: z.coerce.date(), // ✅ converts ISO string → Date
       }),

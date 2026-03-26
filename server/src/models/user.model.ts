@@ -32,11 +32,13 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      maxlength: [50, "Password cannot be more than 50 characters"],
     },
     name: {
       type: String,
       required: true,
       trim: true,
+      maxlength: [50, "Name cannot be more than 50 characters"],
     },
     tokenVersion: {
       type: Number,
@@ -72,7 +74,6 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
-
 
 const User = mongoose.model<IUser>("User", userSchema);
 

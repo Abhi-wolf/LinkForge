@@ -6,6 +6,8 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
+import { ErrorBoundary } from "react-error-boundary";
+import { ErrorFallback } from "./components/ErrorFallback";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -30,6 +32,7 @@ import { TRPCProvider } from "./services/trpc";
 import { serverConfig } from "./services/config";
 import { refreshTokenFunc } from "./services/refreshTokenService";
 import ApiKeys from "./pages/Dashboard/ApiKeys";
+import NotFound from "./pages/NotFound";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -125,6 +128,10 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: "*",
+    element: <NotFound />,
+  },
 ]);
 
 function App() {
@@ -173,21 +180,23 @@ function App() {
   );
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      <QueryClientProvider client={queryClient}>
-        <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
-          <RouterProvider router={router} />
-          <Toaster />
-        </TRPCProvider>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <QueryClientProvider client={queryClient}>
+          <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
+            <RouterProvider router={router} />
+            <Toaster />
+          </TRPCProvider>
 
-        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-      </QueryClientProvider>
-    </ThemeProvider>
+          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

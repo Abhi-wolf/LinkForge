@@ -33,32 +33,38 @@ export function ApiKeyItem({
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-3">
           <div className="font-mono text-sm bg-muted px-3 py-1 rounded">
-            { maskApiKey(apiKey.apiKey)}
+            {maskApiKey(apiKey.apiKey)}
           </div>
-
         </div>
 
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Badge
-            variant={apiKey.apiKeyStatus === ApiKeyStatus.ACTIVE ? "default" : "secondary"}
+            variant={
+              apiKey.apiKeyStatus === ApiKeyStatus.ACTIVE
+                ? "default"
+                : "secondary"
+            }
             className={
               apiKey.apiKeyStatus === ApiKeyStatus.ACTIVE
                 ? "bg-green-500 hover:bg-green-600 text-white border-none"
                 : "bg-gray-100 text-gray-800 border-gray-200"
             }
           >
-            {apiKey.apiKeyStatus.charAt(0).toUpperCase() + apiKey.apiKeyStatus.slice(1)}
+            {apiKey.apiKeyStatus.charAt(0).toUpperCase() +
+              apiKey.apiKeyStatus.slice(1)}
           </Badge>
           {apiKey.description && (
-            <span className="font-medium text-foreground">{apiKey.description}</span>
+            <span className="font-medium text-foreground">
+              {apiKey.description}
+            </span>
           )}
-          <span>Created {new Date(apiKey.createdAt).toLocaleDateString()}</span>
-          {apiKey.userId && <span>Owner: {apiKey.userId.name}</span>}
+          <span>
+            Created on : {new Date(apiKey.createdAt).toLocaleDateString()}
+          </span>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -69,14 +75,18 @@ export function ApiKeyItem({
             {apiKey.apiKeyStatus === ApiKeyStatus.ACTIVE && (
               <>
                 <DropdownMenuItem
-                  onClick={() => confirmStatusUpdate(apiKeyId, ApiKeyStatus.INACTIVE)}
+                  onClick={() =>
+                    confirmStatusUpdate(apiKeyId, ApiKeyStatus.INACTIVE)
+                  }
                   className="text-orange-600 focus:text-orange-700"
                 >
                   <Ban className="h-3 w-3 mr-2" />
                   Deactivate
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => confirmStatusUpdate(apiKeyId, ApiKeyStatus.REVOKED)}
+                  onClick={() =>
+                    confirmStatusUpdate(apiKeyId, ApiKeyStatus.REVOKED)
+                  }
                   className="text-red-600 focus:text-red-700"
                 >
                   <Trash2 className="h-3 w-3 mr-2" />
@@ -87,7 +97,9 @@ export function ApiKeyItem({
             {apiKey.apiKeyStatus === ApiKeyStatus.INACTIVE && (
               <>
                 <DropdownMenuItem
-                  onClick={() => confirmStatusUpdate(apiKeyId, ApiKeyStatus.ACTIVE)}
+                  onClick={() =>
+                    confirmStatusUpdate(apiKeyId, ApiKeyStatus.ACTIVE)
+                  }
                   className="text-green-600 focus:text-green-700"
                 >
                   <CheckCircle className="h-3 w-3 mr-2" />
