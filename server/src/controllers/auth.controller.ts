@@ -6,7 +6,7 @@ import {
 import logger from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { AuthFactory } from "../factories/auth.factory";
-
+import { serverConfig } from "../config";
 
 const authService = AuthFactory.getAuthService();
 
@@ -40,15 +40,15 @@ export const authController = {
     .mutation(async ({ input, ctx }) => {
       try {
         const result = await authService.login(input);
-        // logger.info("User logged in", result);
 
         ctx.res.cookie("accessToken", result.accessToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: serverConfig.NODE_ENV === "production",
           sameSite: "strict",
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
+        logger.info(`User ${result.user.id} logged in`);
 
         return result;
       } catch (error) {
@@ -69,12 +69,12 @@ export const authController = {
 
         ctx.res.cookie("accessToken", tokens.accessToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: serverConfig.NODE_ENV === "production",
           sameSite: "strict",
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
-        logger.info(`Token refreshed for user ${tokens.userId}`)
+        logger.info(`Token refreshed for user ${tokens.userId}`);
         return tokens;
       } catch (error) {
         logger.error(`Error refreshing token: `, error);
@@ -93,17 +93,19 @@ export const authController = {
     }
   }),
 
-
   updateUser: loggedInUserProcedure
     .input(
       z.object({
         name: z.string().min(2).optional(),
         password: z.string().min(6).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const updatedUser = await authService.updateUser(ctx.user!.userId, input);
+        const updatedUser = await authService.updateUser(
+          ctx.user!.userId,
+          input,
+        );
         logger.info(`User ${ctx.user!.userId} updated`);
         return updatedUser;
       } catch (error) {
@@ -111,7 +113,6 @@ export const authController = {
         handleAppError(error);
       }
     }),
-
 
   me: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
@@ -127,7 +128,7 @@ export const authController = {
     .input(
       z.object({
         email: z.string().email(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       try {
@@ -144,12 +145,14 @@ export const authController = {
     .input(
       z.object({
         token: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       try {
         const result = await authService.verifyEmail(input.token);
-        logger.info(`Email verified with token: ${input.token.substring(0, 8)}...`);
+        logger.info(
+          `Email verified with token: ${input.token.substring(0, 8)}...`,
+        );
         return result;
       } catch (error) {
         logger.error(`Error verifying email: `, error);
@@ -161,7 +164,7 @@ export const authController = {
     .input(
       z.object({
         email: z.string().email(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       try {
@@ -179,12 +182,17 @@ export const authController = {
       z.object({
         token: z.string(),
         newPassword: z.string().min(6),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       try {
-        const result = await authService.resetPassword(input.token, input.newPassword);
-        logger.info(`Password reset completed with token: ${input.token.substring(0, 8)}...`);
+        const result = await authService.resetPassword(
+          input.token,
+          input.newPassword,
+        );
+        logger.info(
+          `Password reset completed with token: ${input.token.substring(0, 8)}...`,
+        );
         return result;
       } catch (error) {
         logger.error(`Error resetting password: `, error);

@@ -39,7 +39,8 @@ type LoginValues = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const { mutate: loginUser } = useLogin();
-  const { mutate: sendVerification ,isPending: isSendingVerification} = useSendEmailVerification();
+  const { mutate: sendVerification, isPending: isSendingVerification } =
+    useSendEmailVerification();
   const setLogin = useAuthStore((state) => state.login);
   const [userEmail, setUserEmail] = useState("");
   const [showVerificationWarning, setShowVerificationWarning] = useState(false);
@@ -56,7 +57,7 @@ export default function Login() {
     setUserEmail(values.email);
     loginUser(values, {
       onSuccess: (data) => {
-        console.log("Login data:", data);
+        // console.log("Login data:", data);
         if (data.refreshToken) {
           setLogin({ refreshToken: data.refreshToken });
         }
@@ -64,13 +65,19 @@ export default function Login() {
         navigate("/dashboard");
       },
       onError: (error) => {
-        if (error.message?.includes("verify your email")) {
+        if (error.message.includes("EMAIL_NOT_VERIFIED")) {
           setShowVerificationWarning(true);
           setUserEmail(values.email);
-        } else {
-          toast.error(
-            "Failed to log in. Please check your credentials and try again.",
-          );
+        }
+
+        try {
+          const errors = JSON.parse(error.message);
+          const firstMessage = errors[0]?.message ?? "Something went wrong";
+
+          toast.error(firstMessage);
+        } catch {
+          // Fallback if message isn't a JSON array
+          toast.error(error.message);
         }
         setIsLoading(false);
       },
@@ -79,12 +86,14 @@ export default function Login() {
 
   const handleResendVerification = async () => {
     if (!userEmail) return;
-    
+
     try {
       await sendVerification({ email: userEmail });
-      toast.success(`Verification email sent to ${userEmail}. Please check your inbox.`);
+      toast.success(
+        `Verification email sent to ${userEmail}. Please check your inbox.`,
+      );
     } catch (error) {
-      console.error("handleResendVerification ERROR = ",error)
+      console.error("handleResendVerification ERROR = ", error);
       toast.error("Failed to resend verification email. Please try again.");
     }
   };
@@ -131,7 +140,7 @@ export default function Login() {
                         Email verification required
                       </p>
                       <p className="text-sm text-yellow-700 mt-1">
-                        Please verify your email before logging in. Check your inbox for the verification link.
+                        Please verify your email before logging in.
                       </p>
                       <Button
                         // variant="outline"
@@ -140,7 +149,9 @@ export default function Login() {
                         className="mt-2"
                         disabled={isSendingVerification}
                       >
-                        {isSendingVerification ? "Sending..." : "Resend Verification"}
+                        {isSendingVerification
+                          ? "Sending..."
+                          : "Send Verification"}
                       </Button>
                     </div>
                   </div>

@@ -53,8 +53,10 @@ export default function Register() {
   const onSubmit = async (values: RegisterValues) => {
     registerUser(values, {
       onSuccess: (data) => {
-        if(data.user.email) {
-          toast.success("Account created successfully!");
+        if (data.user.email) {
+          toast.success(
+            "Account created successfully! Please verify your email by clicking the link in the email.",
+          );
           navigate("/login");
         }
       },

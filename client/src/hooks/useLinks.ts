@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { useTRPC } from "@/services/trpc";
 import { UrlStatus } from "@/types/url.types";
 
@@ -30,9 +35,6 @@ export function useCreateLink() {
         queryClient.invalidateQueries({
           queryKey: trpc.url.getAllUrlsOfUser.queryKey(),
         });
-      },
-      onError: (error) => {
-        console.error(error);
       },
     }),
   );

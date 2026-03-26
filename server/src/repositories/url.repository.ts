@@ -12,7 +12,6 @@ export interface UrlStats {
   id: string;
   originalUrl: string;
   shortUrl: string;
-  clicks: number;
   tags: string[];
   expirationDate: Date | null;
   status: string;
@@ -70,17 +69,6 @@ export class UrlRepository {
     return urls;
   }
 
-  async incrementClicks(shortUrl: string): Promise<void> {
-    await Url.findOneAndUpdate(
-      { shortUrl },
-      {
-        $inc: { clicks: 1 },
-      },
-    );
-
-    return;
-  }
-
   async findStatsByShortUrl(shortUrl: string): Promise<UrlStats | null> {
     const url = await Url.findOne({
       shortUrl,
@@ -95,7 +83,6 @@ export class UrlRepository {
       id: url._id.toString(),
       shortUrl: url.shortUrl,
       originalUrl: url.originalUrl,
-      clicks: url.clicks,
       tags: url.tags,
       status: url.status,
       expirationDate: url.expirationDate,

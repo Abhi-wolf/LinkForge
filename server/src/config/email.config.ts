@@ -1,26 +1,24 @@
-import dotenv from "dotenv";
 import { EmailConfig } from "../types/email.types";
-
-dotenv.config();
+import { env } from "./env";
 
 export const emailConfig: EmailConfig = {
-  transporter: (process.env.EMAIL_TRANSPORTER as 'smtp' | 'gmail' | 'sendgrid') || 'smtp',
-  host: process.env.SMTP_HOST || 'localhost',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
+  transporter: env.EMAIL_TRANSPORTER,
+  host: env.SMTP_HOST,
+  port: env.SMTP_PORT,
+  secure: env.SMTP_SECURE,
   auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
+    user: env.SMTP_USER,
+    pass: env.SMTP_PASS,
   },
   from: {
-    address: process.env.EMAIL_FROM_ADDRESS || 'noreply@linkforge.com',
-    name: process.env.EMAIL_FROM_NAME || 'LinkForge',
+    address: env.EMAIL_FROM_ADDRESS,
+    name: env.EMAIL_FROM_NAME,
   },
 };
 
 export const emailSettings = {
-  templatesPath: process.env.EMAIL_TEMPLATES_PATH || './src/utils/email-templates',
-  verificationTokenExpire: process.env.VERIFICATION_TOKEN_EXPIRE || '24h',
-  resetTokenExpire: process.env.RESET_TOKEN_EXPIRE || '30m',
-  emailRequestRateLimit: Number(process.env.EMAIL_REQUEST_RATE_LIMIT) || 3,
+  templatesPath: env.EMAIL_TEMPLATES_PATH,
+  verificationTokenExpire: env.VERIFICATION_TOKEN_EXPIRE,
+  resetTokenExpire: env.RESET_TOKEN_EXPIRE,
+  emailRequestRateLimit: env.EMAIL_REQUEST_RATE_LIMIT,
 };

@@ -5,7 +5,6 @@ export interface IUrl extends Document {
   shortUrl: string;
   createdAt: Date;
   updatedAt: Date;
-  clicks: number;
   tags: string[];
   expirationDate: Date | null;
   status: UrlStatus;
@@ -24,15 +23,13 @@ const urlSchema = new mongoose.Schema(
     originalUrl: {
       type: String,
       required: true,
+      maxlength: 2048,
+      trim: true,
     },
     shortUrl: {
       type: String,
       required: true,
       unique: true,
-    },
-    clicks: {
-      type: Number,
-      default: 0,
     },
     tags: {
       type: [String],

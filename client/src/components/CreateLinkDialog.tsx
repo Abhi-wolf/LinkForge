@@ -30,7 +30,8 @@ import { toast } from "sonner";
 const createLinkSchema = z.object({
   originalUrl: z
     .string()
-    .url("Please enter a valid URL (e.g. https://example.com)"),
+    .url("Please enter a valid URL (e.g. https://example.com)")
+    .max(2048, "URL too long (max 2048 characters)"),
   tags: z.string().optional(),
   expirationDate: z.string().optional(),
 });
@@ -80,9 +81,15 @@ export function CreateLinkDialog({ trigger }: CreateLinkDialogProps) {
           toast.success("Link created successfully!");
         },
         onError: (error) => {
-          toast.error(error.message);
-          console.error("url creation error = ", error)
-        }
+          try {
+            const errors = JSON.parse(error.message);
+            const firstMessage = errors[0]?.message ?? "Something went wrong";
+            toast.error(firstMessage);
+          } catch {
+            // Fallback if message isn't a JSON array
+            toast.error(error.message);
+          }
+        },
       },
     );
   };

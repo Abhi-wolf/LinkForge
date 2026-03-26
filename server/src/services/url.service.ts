@@ -5,14 +5,19 @@ import { AnalyticsRepository } from "../repositories/analytics.repository";
 import { CacheRepository } from "../repositories/cache.repository";
 import { UrlRepository } from "../repositories/url.repository";
 import { toBase62 } from "../utils/base62";
-import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from "../utils/errors/app.error";
+import {
+  BadRequestError,
+  ForbiddenError,
+  InternalServerError,
+  NotFoundError,
+} from "../utils/errors/app.error";
 
 export class UrlService {
   constructor(
     private readonly urlRepository: UrlRepository,
     private readonly cacheRepository: CacheRepository,
     private readonly analyticsRepository: AnalyticsRepository,
-  ) { }
+  ) {}
 
   async createShortUrl(urlData: CreateUrlDto, userId?: string) {
     let shortUrl: string;
@@ -23,8 +28,8 @@ export class UrlService {
       urlData.expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
-    const MAX_ATTEMPTS=10;
-    let attempts=0;
+    const MAX_ATTEMPTS = 10;
+    let attempts = 0;
 
     while (attempts < MAX_ATTEMPTS) {
       const nextId = await this.cacheRepository.getNextId();
@@ -50,8 +55,10 @@ export class UrlService {
       break;
     }
 
-    if(attempts >= MAX_ATTEMPTS) {
-      throw new InternalServerError("Failed to generate unique short URL after multiple attempts");
+    if (attempts >= MAX_ATTEMPTS) {
+      throw new InternalServerError(
+        "Failed to generate unique short URL after multiple attempts",
+      );
     }
 
     await this.cacheRepository.setUrlMapping({
@@ -72,7 +79,6 @@ export class UrlService {
       originalUrl: urlData.originalUrl,
       tags: urlData.tags,
       expirationDate: urlData.expirationDate,
-      clicks: url!.clicks,
       createdAt: url!.createdAt,
       updatedAt: url!.updatedAt,
     };
@@ -82,7 +88,6 @@ export class UrlService {
     const cacheData = await this.cacheRepository.getUrlMapping(shortUrl);
 
     if (cacheData) {
-
       if (cacheData.status && cacheData.status !== UrlStatus.ACTIVE) {
         throw new NotFoundError("Url not found");
       }
@@ -126,14 +131,17 @@ export class UrlService {
     };
   }
 
-  async getAllUrlsOfUser(userId: string, options: {
-    search?: string;
-    status?: UrlStatus;
-    startDate?: Date;
-    endDate?: Date;
-    limit?: number;
-    offset?: number;
-  }) {
+  async getAllUrlsOfUser(
+    userId: string,
+    options: {
+      search?: string;
+      status?: UrlStatus;
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
     const [urls, total] = await Promise.all([
       this.urlRepository.getUrlsOfUser(userId, options),
       this.urlRepository.countUrlsOfUser(userId, options),
@@ -162,7 +170,6 @@ export class UrlService {
   }
 
   async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
-
     if (data.shortUrl) {
       throw new ForbiddenError("Short URL cannot be updated");
     }
@@ -189,8 +196,6 @@ export class UrlService {
       throw new BadRequestError("Expiration date cannot be in the past");
     }
 
-
-
     const updatedUrl = await this.urlRepository.updateUrl(id, data);
 
     if (!updatedUrl) {
@@ -214,7 +219,6 @@ export class UrlService {
       id: updatedUrl._id?.toString(),
       originalUrl: updatedUrl.originalUrl,
       shortUrl: updatedUrl.shortUrl,
-      clicks: updatedUrl.clicks,
       tags: updatedUrl.tags,
       status: updatedUrl.status,
       expirationDate: updatedUrl.expirationDate,
@@ -244,16 +248,13 @@ export class UrlService {
   async getUrlBelongsToUser(shortUrl: string, userId: string) {
     const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
-
     if (!existingUrl) {
       throw new NotFoundError("Url not found");
     }
 
-
     if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
       throw new ForbiddenError("You do not have permission to access this URL");
     }
-    
 
     return {
       urlId: existingUrl._id?.toString(),

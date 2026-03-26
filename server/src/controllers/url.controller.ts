@@ -19,14 +19,19 @@ export const urlController = {
   create: authProcedure
     .input(
       z.object({
-        originalUrl: z.string().url("Invalid URL"),
-        tags: z.array(z.string()).optional(),
+        originalUrl: z
+          .string()
+          .url("Invalid URL")
+          .max(2048, "URL too long (max 2048 characters)"),
+        tags: z
+          .array(z.string())
+          .max(3, "Tags too long (max 3 tags)")
+          .optional(),
         expirationDate: z.coerce.date().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       try {
-
         const url = await urlService.createShortUrl(
           {
             originalUrl: input.originalUrl,
@@ -105,18 +110,23 @@ export const urlController = {
 
   getAllUrlsOfUser: loggedInUserProcedure
     .input(
-      z.object({
-        search: z.string().optional(),
-        status: z.nativeEnum(UrlStatus).optional(),
-        startDate: z.coerce.date().optional(),
-        endDate: z.coerce.date().optional(),
-        limit: z.number().int().min(1).optional(),
-        offset: z.number().int().min(0).optional(),
-      }).optional(),
+      z
+        .object({
+          search: z.string().optional(),
+          status: z.nativeEnum(UrlStatus).optional(),
+          startDate: z.coerce.date().optional(),
+          endDate: z.coerce.date().optional(),
+          limit: z.number().int().min(1).optional(),
+          offset: z.number().int().min(0).optional(),
+        })
+        .optional(),
     )
     .query(async ({ input, ctx }) => {
       try {
-        const urls = await urlService.getAllUrlsOfUser(ctx.user!.userId, input || {});
+        const urls = await urlService.getAllUrlsOfUser(
+          ctx.user!.userId,
+          input || {},
+        );
         return urls;
       } catch (error) {
         logger.error(`Error fetching URLs for user : `, error);
@@ -139,7 +149,6 @@ export async function redirectUrl(req: Request, res: Response) {
   if (ip === "::1") ip = "127.0.0.1";
 
   const geo = geoip.lookup(ip);
-
 
   const location = {
     country: geo?.country || "unknown",
@@ -186,5 +195,3 @@ export async function redirectUrl(req: Request, res: Response) {
   //302 → Temporary redirect (browser re-checks every time) — good for tracking analytics
   res.redirect(url.originalUrl);
 }
-
-

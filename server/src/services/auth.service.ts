@@ -4,6 +4,7 @@ import { serverConfig } from "../config";
 import { UserRepository } from "../repositories/user.repository";
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from "../utils/errors/app.error";
@@ -33,7 +34,7 @@ export class AuthService {
     try {
       await this.emailService.sendWelcomeEmail(user.email, {
         userName: user.name,
-        appName: "LinkForge",
+        appName: serverConfig.APP_NAME,
       });
     } catch (error) {
       logger.error("Failed to send welcome email", error);
@@ -71,7 +72,7 @@ export class AuthService {
     await this.emailService.sendEmailVerification(user.email, {
       userName: user.name,
       verificationLink,
-      appName: "LinkForge",
+      appName: serverConfig.APP_NAME,
     });
 
     return { message: "Verification email sent" };
@@ -106,7 +107,7 @@ export class AuthService {
     await this.emailService.sendForgotPassword(user.email, {
       userName: user.name,
       resetLink,
-      appName: "LinkForge",
+      appName: serverConfig.APP_NAME,
       expiryMinutes: 30,
     });
 
@@ -135,7 +136,7 @@ export class AuthService {
     try {
       await this.emailService.sendPasswordResetConfirmation(user.email, {
         userName: user.name,
-        appName: "LinkForge",
+        appName: serverConfig.APP_NAME,
       });
     } catch (error) {
       logger.error("Failed to send password reset confirmation email", error);
@@ -156,9 +157,7 @@ export class AuthService {
     }
 
     if (!user.emailVerified) {
-      throw new UnauthorizedError(
-        "Please verify your email before logging in. Check your inbox for the verification email.",
-      );
+      throw new ForbiddenError("EMAIL_NOT_VERIFIED");
     }
 
     const tokens = this.generateTokens(user);
@@ -201,11 +200,11 @@ export class AuthService {
 
       const user = await this.userRepository.findById(decoded.userId);
 
-      logger.info(`Got user from repository ${JSON.stringify(user)}`);
-
       if (!user || user.tokenVersion !== decoded.tokenVersion) {
         throw new UnauthorizedError("Invalid refresh token");
       }
+
+      logger.info(`Got user from repository ${user._id}`);
 
       const updatedUser = await this.userRepository.incrementTokenVersion(
         decoded.userId,
