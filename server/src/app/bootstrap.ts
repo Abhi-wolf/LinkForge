@@ -12,31 +12,23 @@ export async function initializeServices(): Promise<void> {
   logger.info("Initializing services...");
 
   try {
-    // Initialize core services
     await initRedis();
-    logger.info("✓ Redis initialized");
 
     await connectDB();
-    logger.info("✓ Database connected");
 
-    // Start background workers and schedulers
     await startAnalyticsWorker();
-    logger.info("✓ Analytics worker started");
 
     await startAnalyticsAggregationScheduler();
     logger.info("✓ Analytics aggregation scheduler started");
 
     await startAggregationAnalyticsWorker();
-    logger.info("✓ Aggregation analytics worker started");
 
     await startUrlExpirySchedulaer();
     logger.info("✓ URL expiry scheduler started");
 
     await startUrlExpiryWorker();
-    logger.info("✓ URL expiry worker started");
 
     await startMcpServer();
-    logger.info("✓ MCP server started");
 
     logger.info("All services initialized successfully");
   } catch (error) {
@@ -50,11 +42,7 @@ export async function shutdownServices(): Promise<void> {
 
   try {
     await closeRedis();
-    logger.info("✓ Redis connection closed");
-
     await disconnectDB();
-    logger.info("✓ Database connection closed");
-
     logger.info("All services shut down successfully");
   } catch (error) {
     logger.error("Error during service shutdown:", error);

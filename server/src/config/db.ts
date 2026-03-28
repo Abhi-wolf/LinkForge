@@ -16,7 +16,6 @@ export async function connectDB() {
     logger.info("Connected to database");
   } catch (error) {
     logger.error("Error connecting to database", error);
-    process.exit(1);
   }
 }
 
@@ -26,7 +25,6 @@ export async function disconnectDB() {
     logger.info("Disconnected from database");
   } catch (error) {
     logger.error("Error disconnecting from database", error);
-    process.exit(1);
   }
 }
 
