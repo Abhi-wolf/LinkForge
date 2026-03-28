@@ -9,7 +9,7 @@ export const analyticsQueue = new Queue(serverConfig.ANALYTICS_QUEUE, {
     attempts: 3,
     backoff: {
       type: "exponential",
-      delay: 2000,
+      delay: 20000,
     },
     removeOnFail: {
       age: 7 * 24 * 3600,   // Keep failed jobs for 7 days
@@ -17,7 +17,7 @@ export const analyticsQueue = new Queue(serverConfig.ANALYTICS_QUEUE, {
     },
     removeOnComplete: {
       age: 24 * 3600,   // keep for 24 hours
-      count: 1000,      // keep last 1000 completed jobs
+      count: 100,      // keep last 1000 completed jobs
     },
   },
 });

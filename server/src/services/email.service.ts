@@ -13,6 +13,11 @@ export class EmailService implements IEmailService {
     this.transporter = this.createTransporter(config || emailConfig);
   }
 
+  /**
+   * Create a transporter for sending emails
+   * @param config - Email configuration
+   * @returns nodemailer.Transporter - Transporter for sending emails
+   */
   private createTransporter(config: EmailConfig): nodemailer.Transporter {
     switch (config.transporter) {
       case 'gmail':
@@ -42,6 +47,11 @@ export class EmailService implements IEmailService {
     }
   }
 
+  /**
+   * Send an email
+   * @param options - Email options
+   * @returns Promise<void> - Promise that resolves when the email is sent
+   */
   public async sendEmail(options: EmailOptions): Promise<void> {
     try {
       const { html, text } = this.templateRenderer.renderTemplate(options.template, options.data);
@@ -63,6 +73,12 @@ export class EmailService implements IEmailService {
     }
   }
 
+  /**
+   * Send a welcome email
+   * @param to - Recipient email address
+   * @param data - Email data
+   * @returns Promise<void> - Promise that resolves when the email is sent
+   */
   public async sendWelcomeEmail(to: string, data: any): Promise<void> {
     await this.sendEmail({
       to,
@@ -72,6 +88,12 @@ export class EmailService implements IEmailService {
     });
   }
 
+  /**
+   * Send an email verification email
+   * @param to - Recipient email address
+   * @param data - Email data
+   * @returns Promise<void> - Promise that resolves when the email is sent
+   */
   public async sendEmailVerification(to: string, data: any): Promise<void> {
     await this.sendEmail({
       to,
@@ -81,6 +103,12 @@ export class EmailService implements IEmailService {
     });
   }
 
+  /**
+   * Send a forgot password email
+   * @param to - Recipient email address
+   * @param data - Email data
+   * @returns Promise<void> - Promise that resolves when the email is sent
+   */
   public async sendForgotPassword(to: string, data: any): Promise<void> {
     await this.sendEmail({
       to,
@@ -90,6 +118,12 @@ export class EmailService implements IEmailService {
     });
   }
 
+  /**
+   * Send a password reset confirmation email
+   * @param to - Recipient email address
+   * @param data - Email data
+   * @returns Promise<void> - Promise that resolves when the email is sent
+   */
   public async sendPasswordResetConfirmation(to: string, data: any): Promise<void> {
     await this.sendEmail({
       to,
@@ -99,6 +133,10 @@ export class EmailService implements IEmailService {
     });
   }
 
+  /**
+   * Verify the email service connection
+   * @returns Promise<boolean> - Promise that resolves to true if the connection is successful
+   */
   public async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();

@@ -1,12 +1,11 @@
 import logger from "../config/logger.config";
-import { initRedis, closeRedis } from "../config/redis";
+import { initRedis } from "../config/redis";
 import { connectDB, disconnectDB } from "../config/db";
-import { startAnalyticsWorker } from "../workers/analytics.worker";
-import { startAnalyticsAggregationScheduler } from "../queues/analytics.aggregation.scheduler";
-import { startAggregationAnalyticsWorker } from "../workers/analytics.aggregation.worker";
-import { startUrlExpirySchedulaer } from "../queues/url.expiry.scheduler";
+// import { startAnalyticsWorker } from "../workers/analytics.worker";
+// import { startAggregationAnalyticsWorker } from "../workers/analytics.aggregation.worker";
 import { startUrlExpiryWorker } from "../workers/url.expiry.worker";
-import { startMcpServer } from "../mcp.server";
+import { startAnalyticsAggregationScheduler } from "../workers/analytics.aggregation.worker";
+// import { startMcpServer } from "../mcp.server";
 
 export async function initializeServices(): Promise<void> {
   logger.info("Initializing services...");
@@ -16,19 +15,13 @@ export async function initializeServices(): Promise<void> {
 
     await connectDB();
 
-    await startAnalyticsWorker();
-
-    await startAnalyticsAggregationScheduler();
-    logger.info("✓ Analytics aggregation scheduler started");
-
-    await startAggregationAnalyticsWorker();
-
-    await startUrlExpirySchedulaer();
-    logger.info("✓ URL expiry scheduler started");
-
+    // if (isRedisAvailable) {
+    //   await startAnalyticsWorker();
+    // }
+    
     await startUrlExpiryWorker();
-
-    await startMcpServer();
+    await startAnalyticsAggregationScheduler();
+    //   await startMcpServer();
 
     logger.info("All services initialized successfully");
   } catch (error) {
@@ -41,7 +34,7 @@ export async function shutdownServices(): Promise<void> {
   logger.info("Shutting down services...");
 
   try {
-    await closeRedis();
+    // await closeRedis();
     await disconnectDB();
     logger.info("All services shut down successfully");
   } catch (error) {

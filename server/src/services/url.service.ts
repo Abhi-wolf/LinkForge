@@ -1,4 +1,5 @@
 import { serverConfig } from "../config";
+import logger from "../config/logger.config";
 import type { CreateUrlDto } from "../dtos/url.dto";
 import { type IUrl, UrlStatus } from "../models/url.model";
 import { AnalyticsRepository } from "../repositories/analytics.repository";
@@ -19,6 +20,12 @@ export class UrlService {
     private readonly analyticsRepository: AnalyticsRepository,
   ) {}
 
+  /**
+   * Create a short URL
+   * @param urlData - URL data
+   * @param userId - User ID (optional)
+   * @returns Promise<IUrl> - Created URL
+   */
   async createShortUrl(urlData: CreateUrlDto, userId?: string) {
     let shortUrl: string;
     let url;
@@ -28,7 +35,7 @@ export class UrlService {
       urlData.expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
-    const MAX_ATTEMPTS = 10;
+    const MAX_ATTEMPTS = 5;
     let attempts = 0;
 
     while (attempts < MAX_ATTEMPTS) {
@@ -39,9 +46,10 @@ export class UrlService {
       // Check if the generated short URL already exists (unlikely but possible)
       const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
+      // Collision occurred, generate a new short URL
       if (existingUrl) {
         attempts++;
-        continue; // Collision occurred, generate a new short URL
+        continue;
       }
 
       url = await this.urlRepository.create({
@@ -84,6 +92,12 @@ export class UrlService {
     };
   }
 
+  /**
+   * Get original URL from short URL
+   * @param shortUrl - Short URL to lookup
+   * @returns Promise<{ originalUrl: string; shortUrl: string; urlId: string; status: UrlStatus; expirationDate: string | null }> - URL data
+   * @throws NotFoundError - If URL not found
+   */
   async getOriginalUrl(shortUrl: string) {
     const cacheData = await this.cacheRepository.getUrlMapping(shortUrl);
 
@@ -92,9 +106,12 @@ export class UrlService {
         throw new NotFoundError("Url not found");
       }
 
-      // if(cacheData.expirationDate && new Date(cacheData.expirationDate) < new Date()){
-      //   throw new NotFoundError("Url not found");
-      // }
+      if (
+        cacheData.expirationDate &&
+        new Date(cacheData.expirationDate) < new Date()
+      ) {
+        throw new NotFoundError("Url not found");
+      }
 
       return {
         originalUrl: cacheData.originalUrl,
@@ -111,9 +128,14 @@ export class UrlService {
       throw new NotFoundError("Url not found");
     }
 
+    if (url.expirationDate && new Date(url.expirationDate) < new Date()) {
+      throw new NotFoundError("Url not found");
+    }
+
     if (url.status !== UrlStatus.ACTIVE) {
       throw new NotFoundError("Url not found");
     }
+
     await this.cacheRepository.setUrlMapping({
       shortUrl: url.shortUrl,
       originalUrl: url.originalUrl,
@@ -131,6 +153,12 @@ export class UrlService {
     };
   }
 
+  /**
+   * Get all URLs of a user
+   * @param userId - User ID
+   * @param options - Query options
+   * @returns Promise<{ urls: IUrl[]; total: number }> - URLs and total count
+   */
   async getAllUrlsOfUser(
     userId: string,
     options: {
@@ -169,6 +197,16 @@ export class UrlService {
     };
   }
 
+  /**
+   * Update a URL
+   * @param id - URL ID
+   * @param data - URL data to update
+   * @param userId - User ID
+   * @returns Promise<IUrl> - Updated URL
+   * @throws NotFoundError - If URL not found
+   * @throws ForbiddenError - If user does not have permission to update URL
+   * @throws BadRequestError - If short URL is expired or expiration date is in the past
+   */
   async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
     if (data.shortUrl) {
       throw new ForbiddenError("Short URL cannot be updated");
@@ -227,6 +265,14 @@ export class UrlService {
     };
   }
 
+  /**
+   * Delete a URL
+   * @param id - URL ID
+   * @param userId - User ID
+   * @returns Promise<void>
+   * @throws NotFoundError - If URL not found
+   * @throws ForbiddenError - If user does not have permission to delete URL
+   */
   async deleteUrl(id: string, userId: string) {
     const existingUrl = await this.urlRepository.findById(id);
 
@@ -245,6 +291,14 @@ export class UrlService {
     return;
   }
 
+  /**
+   * Get URL that belongs to a user
+   * @param shortUrl - Short URL
+   * @param userId - User ID
+   * @returns Promise<{ urlId: string; originalUrl: string; shortUrl: string; tags: string[]; status: UrlStatus; expirationDate: Date | null }> - URL details
+   * @throws NotFoundError - If URL not found
+   * @throws ForbiddenError - If user does not have permission to access URL
+   */
   async getUrlBelongsToUser(shortUrl: string, userId: string) {
     const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
@@ -264,5 +318,27 @@ export class UrlService {
       status: existingUrl.status,
       expirationDate: existingUrl.expirationDate,
     };
+  }
+
+  async runUrlExpiryJob() {
+    // TODO: Implement URL expiry job
+    const expiredUrls = await this.urlRepository.findExpiredUrls();
+
+    if (expiredUrls?.length > 0) {
+      await this.urlRepository.updateExpireStatus();
+
+      logger.info(`Expired URLs updated`);
+
+      // Clear cache for each expired URL
+      await Promise.all(
+        expiredUrls.map((url) =>
+          this.cacheRepository.deleteUrlMapping(url.shortUrl),
+        ),
+      );
+
+      logger.info(
+        `${expiredUrls.length} expired URLs updated and cleared from cache`,
+      );
+    }
   }
 }

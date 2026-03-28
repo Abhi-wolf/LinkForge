@@ -18,6 +18,11 @@ export class AuthService {
     this.emailService = new EmailService();
   }
 
+  /**
+   * Register a new user
+   * @param data - User registration data
+   * @returns Promise<any> - Registered user
+   */
   async register(data: any) {
     const existingUser = await this.userRepository.findByEmail(data.email);
     if (existingUser) {
@@ -50,6 +55,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Send email verification
+   * @param email - User email
+   * @returns Promise<{ message: string }> - Message indicating verification email sent
+   */
   async sendEmailVerification(email: string) {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
@@ -78,6 +88,11 @@ export class AuthService {
     return { message: "Verification email sent" };
   }
 
+  /**
+   * Verify email
+   * @param token - Verification token
+   * @returns Promise<{ message: string }> - Message indicating verification status
+   */
   async verifyEmail(token: string) {
     const user = await this.userRepository.findByEmailVerificationToken(token);
     if (!user) {
@@ -89,6 +104,11 @@ export class AuthService {
     return { message: "Email verified successfully" };
   }
 
+  /**
+   * Request password reset
+   * @param email - User email
+   * @returns Promise<{ message: string }> - Message indicating reset email sent
+   */
   async requestPasswordReset(email: string) {
     const user = await this.userRepository.findByEmail(email);
 
@@ -117,6 +137,12 @@ export class AuthService {
     };
   }
 
+  /**
+   * Reset password
+   * @param token - Reset token
+   * @param newPassword - New password
+   * @returns Promise<{ message: string }> - Message indicating reset status
+   */
   async resetPassword(token: string, newPassword: string) {
     const user = await this.userRepository.findByPasswordResetToken(token);
     if (!user) {
@@ -145,6 +171,11 @@ export class AuthService {
     return { message: "Password reset successfully" };
   }
 
+  /**
+   * Login user
+   * @param data - Login data
+   * @returns Promise<{ user: any, tokens: any }> - User and tokens
+   */
   async login(data: any) {
     const user = await this.userRepository.findByEmail(data.email);
     if (!user) {
@@ -172,6 +203,12 @@ export class AuthService {
     };
   }
 
+  /**
+   * Update user
+   * @param userId - User ID
+   * @param data - Update data
+   * @returns Promise<any> - Updated user
+   */
   async updateUser(userId: string, data: any) {
     const user = await this.userRepository.findById(userId);
 
@@ -189,6 +226,11 @@ export class AuthService {
     return updatedUser;
   }
 
+  /**
+   * Refresh tokens
+   * @param refreshToken - Refresh token
+   * @returns Promise<{ accessToken: string, refreshToken: string }> - New tokens
+   */
   async refreshTokens(refreshToken: string) {
     try {
       const decoded: any = jwt.verify(
@@ -229,10 +271,19 @@ export class AuthService {
     }
   }
 
+  /**
+   * Logout user
+   * @param userId - User ID
+   */
   async logout(userId: string) {
     await this.userRepository.incrementTokenVersion(userId);
   }
 
+  /**
+   * Get user by ID
+   * @param userId - User ID
+   * @returns Promise<{ id: string, email: string, name: string }> - User data
+   */
   async getUserById(userId: string) {
     const user = await this.userRepository.getUserById(userId);
     if (!user) {
@@ -246,6 +297,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Generate access and refresh tokens
+   * @param user - User object
+   * @returns { accessToken: string, refreshToken: string } - Generated tokens
+   */
   private generateTokens(user: any) {
     try {
       const accessToken = jwt.sign(

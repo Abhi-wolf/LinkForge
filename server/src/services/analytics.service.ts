@@ -13,6 +13,12 @@ export class AnalyticsService {
     private readonly urlRepository: UrlRepository,
   ) { }
 
+  /**
+   * Create raw analytics entry
+   * @param data - Raw analytics data
+   * @returns Promise<IHourlyAggregatedAnalyticsModel> - Created analytics entry
+   * @throws NotFoundError - If URL not found
+   */
   async createRawAnalytics(data: CreateRawAnalyticsDto) {
     const url = await this.urlRepository.findByShortUrl(data.shortUrl);
 
@@ -28,10 +34,23 @@ export class AnalyticsService {
     return rawAnalytics;
   }
 
+  /**
+   * Aggregate analytics for a date range
+   * @param start - Start date
+   * @param end - End date
+   */
   async aggregateAnalytics(start: Date, end: Date) {
     await this.analyticsRepository.aggregateAnalytics(start, end);
   }
 
+  /**
+   * Get aggregated analytics for a date range
+   * @param urlId - URL ID
+   * @param startDate - Start date
+   * @param endDate - End date
+   * @param timezone - Timezone
+   * @returns Promise<IHourlyAggregatedAnalyticsModel[]> - Array of analytics entries
+   */
   async getAggregatedAnalyticsForDate(
     urlId: string,
     startDate: string,
@@ -51,7 +70,13 @@ export class AnalyticsService {
     return analytics;
   }
 
-  //TODO: remove N+1 query problem here
+  /**
+   * Get user analytics
+   * @param userId - User ID
+   * @returns Promise<any> - User analytics
+   * @todo Remove N+1 query problem
+   */
+  // TODO : remove N+1 query
   async getUserAnalytics(userId: string) {
     const baseUrl = serverConfig.BASE_URL;
 
@@ -132,6 +157,13 @@ export class AnalyticsService {
     };
   }
 
+  /**
+   * Get analytics for a URL ID
+   * @param urlId - URL ID
+   * @param startDate - Start date
+   * @param endDate - End date
+   * @returns Promise<any> - Analytics data
+   */
   async getAnalyticsForUrlId(urlId: string, startDate: Date, endDate: Date) {
     // frontend will send date in ISO formate with ISO in it - when we use new Date
     // it will automatically get converted to UTC dates

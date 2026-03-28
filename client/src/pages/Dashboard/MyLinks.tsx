@@ -319,15 +319,15 @@ export default function MyLinks() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(link.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(link.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       {link.expirationDate ? (
                         <span className={`text-sm ${new Date(link.expirationDate) < new Date() ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                          {/* {new Date(link.expirationDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} */}
-                          {new Date(link.expirationDate).toLocaleString("en-IN", {
+                          {/* {new Date(link.expirationDate).toLocaleString("en-IN", {
                             timeZone: "Asia/Kolkata",
-                          })}
+                          })} */}
+                          {new Date(link.expirationDate).toLocaleString()}
                         </span>
                       ) : (
                         <span className="text-muted-foreground/50">-</span>
