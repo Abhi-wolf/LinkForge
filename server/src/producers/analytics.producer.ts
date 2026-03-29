@@ -24,11 +24,19 @@ export async function addAnalyticsJob(
   try {
     const job = await analyticsQueue.add(serverConfig.ANALYTICS_QUEUE, data);
 
-    logger.info(`Added analytics job with ID: ${job.id}`);
+    logger.info("Analytics job added to queue successfully", {
+      event: "ANALYTICS_JOB_QUEUED_SUCCESS",
+      jobId: job.id,
+      correlationId: data.correlationId
+    });
 
     return job.id || null;
   } catch (error) {
-    logger.error("Failed to add analytics job", error);
+    logger.error("Failed to add analytics job to queue", {
+      event: "ANALYTICS_JOB_QUEUED_FAILED",
+      correlationId: data.correlationId,
+      err: error instanceof Error ? error : undefined
+    });
     return null;
   }
 }

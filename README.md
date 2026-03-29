@@ -15,6 +15,8 @@ A modern, feature-rich URL shortener application with analytics, built with Reac
 - **MCP Integration**: Model Context Protocol server for AI tool integration
 - **Responsive Design**: Mobile-first design with dark mode support
 - **Docker Support**: Full containerization with Docker Compose
+- **Redis-backed background jobs**: BullMQ for URL expiry and analytics aggregation, with **local `setInterval` fallbacks** when Redis is unreachable at startup or after the shared Redis client disconnects; work moves back to BullMQ when Redis is ready again
+- **Degraded cache when Redis is down**: Redirect lookup cache skips Redis when unavailable; the **numeric short-URL counter** (`INCR`) still requires Redis and fails clearly if Redis is not reachable
 
 ---
 
@@ -28,7 +30,7 @@ A modern, feature-rich URL shortener application with analytics, built with Reac
 | **Backend** | Node.js, Express, TypeScript |
 | **Database** | MongoDB, Redis |
 | **Authentication** | JWT (access + refresh tokens) |
-| **Analytics** | Custom analytics service with Redis caching |
+| **Analytics** | Custom analytics service with Redis caching and BullMQ-backed aggregation |
 | **MCP Server** | Model Context Protocol for AI integration |
 | **Containerization** | Docker & Docker Compose |
 
@@ -64,6 +66,234 @@ url-shortener/
 └── README.md              # This file
 ```
 
+### System runtime flow
+
+**Clients:** The React app calls the API over HTTP (**`/trpc`**). Public short links use **`GET /fwd/:shortUrl`** on the main Express app. **MCP** is a separate process (default **`MCP_SERVER_PORT` 4200**, SSE) when enabled in bootstrap—see [`server/src/mcp.server.ts`](server/src/mcp.server.ts).
+
+**Create short URL (tRPC):** Allocating a new link uses **`INCR`** on Redis (`getNextId`). If **Redis is down**, short URL **creation is not allowed** (the counter path fails). Reads and redirects can still use MongoDB.
+
+**Redirect and click analytics (Redis up):** Each successful redirect builds a payload and **`addAnalyticsJob`** pushes a job onto the **analytics BullMQ** queue (backed by Redis). The **analytics worker** buffers jobs in memory and **bulk-inserts** when either:
+
+- the batch reaches **20** jobs, or
+- a **5 second** timer fires (periodic flush—so you also flush on a time window, not only when size hits 20).
+
+Inserts go to MongoDB. **Dead-letter queue:** rows that fail during the bulk insert, or the whole batch if the flush throws, are **added to the analytics dead-letter queue** for inspection/replay later.
+
+**Redirect when Redis is down:** The user is still redirected using MongoDB (and degraded cache behavior). **BullMQ does not run without Redis**, so **click analytics are not recorded through the queue** in that state—**improvements here are in progress.**
+
+**Scheduled jobs:** With Redis up, **URL expiry** runs on BullMQ on a **~16 minute** cadence and **analytics aggregation** on a **~60 minute** cadence. If Redis is unavailable, **local `setInterval` schedulers** approximate the same work (no BullMQ).
+
+**Viewing diagrams:** Built-in Markdown preview (**Ctrl+Shift+V**) in VS Code and Cursor does **not** render Mermaid. Options: install [Markdown Preview Mermaid Support](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid) and open the preview from that extension, or view this file on GitHub (Mermaid is supported there). The text diagram below works in any preview.
+
+**Text diagram (works everywhere):**
+
+```
+                        +------------------+
+                        |   User Browser   |
+                        +--------+---------+
+                                 |
+           +---------------------+----------------------+
+           |                     |                      |
+           v                     v                      v
+    +-------------+      +---------------+       +---------------+
+    | React Client|      | GET /fwd/...  |       | MCP clients   |
+    |  /trpc      |      | (redirect)    |       | SSE :4200     |
+    +------+------+      +-------+-------+       +-------+-------+
+           |                      |                      |
+           v                      v                      v
+    Express + tRPC          same Express app           MCP server
+           \                      |                     /
+            +----------+----------+--------------------+
+                                  |
+    +------------------------------------------------------------------+
+    |                                                                  |
+    |  CREATE SHORT URL (needs Redis INCR)                             |
+    |  Redis UP  --> counter OK --> persist URL in MongoDB             |
+    |  Redis DOWN -> creation fails (no new short URL)                 |
+    |                                                                  |
+    |  REDIRECT                                                         |
+    |  --> resolve target from MongoDB (Redis cache if available)       |
+    |  Redis UP  --> enqueue 1 analytics job per redirect --> BullMQ   |
+    |  Redis DOWN -> redirect OK, queue offline (analytics gap/WIP)    |
+    |                                                                  |
+    v                                                                  v
+  MongoDB                                                           Redis
+ (URLs, analytics                                                  (counter,
+  aggregates)                                                       BullMQ)
+
+    Analytics worker (Redis UP only):
+      redirect jobs -> in-memory batch -> flush if |batch|>=20 OR every 5s
+                    -> bulk insert MongoDB
+                    -> failures -> Dead letter queue
+
+    Schedulers:
+      Redis UP   -> BullMQ: URL expiry ~16 min, aggregation ~60 min
+      Redis DOWN -> Local timers: same two jobs without BullMQ
+```
+
+<details>
+<summary>Mermaid version (GitHub / Mermaid-enabled preview)</summary>
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    browser[User Browser]
+    mcpClients[MCP clients]
+  end
+  subgraph mainApi [Main API Express]
+    trpc[tRPC]
+    redirect[GET /fwd redirect]
+  end
+  mcpServer[MCP server SSE port 4200]
+  mongo[(MongoDB)]
+  redis[(Redis)]
+  q[Analytics BullMQ queue]
+  worker[Analytics worker]
+  batch[Batch max 20 or flush every 5s]
+  dlq[Analytics dead letter queue]
+  bullSched[BullMQ schedulers URL expiry 16m aggregation 60m]
+  localSched[Local schedulers when Redis down]
+
+  browser --> trpc
+  browser --> redirect
+  mcpClients --> mcpServer
+  trpc -->|new short URL INCR| redis
+  trpc --> mongo
+  redirect --> mongo
+  redirect --> redis
+  redirect -->|one job per redirect| q
+  mcpServer --> mongo
+  q --> redis
+  q --> worker
+  worker --> redis
+  worker --> batch
+  batch --> mongo
+  batch -->|failed rows or flush error| dlq
+  bullSched --> redis
+  bullSched --> mongo
+  localSched --> mongo
+```
+
+</details>
+
+### Redis and background jobs
+
+Redis is used for:
+
+- **Redirect cache** (hot path for `/fwd/:shortUrl`)
+- **Monotonic short-URL ID** (`INCR` on a counter key)
+- **BullMQ**: URL expiry scheduler (**~16 minutes** in cron) and analytics aggregation (**~60 minutes** / hourly window in code)
+- **Queue monitoring** via Bull Board at `/ui` (development)
+
+**Startup behavior**
+
+- `initRedis()` waits for a successful `PING` or times out after about **3 seconds**, so service bootstrap does not block indefinitely when Redis is slow or down.
+- A shared `isRedisAvailable` flag tracks the primary Redis client (`ready`, `error`, `close`, `end`).
+
+**BullMQ vs local schedulers**
+
+- When Redis is available: URL expiry and analytics aggregation run on **BullMQ** (queue + repeatable jobs + worker).
+- When Redis is down at boot, or after the shared client sees a disconnect from a BullMQ setup: those workloads fall back to **local timers** (16-minute URL expiry job, 60-minute aggregation interval).
+
+- **New short URLs** require Redis for the monotonic ID counter: if Redis is down, **creation fails** even though redirects may still work from MongoDB.
+
+- For **full** behavior—create links, caches, queues, and Bull Board—**keep Redis running**. Docker Compose starts `redis` with a health check so the server waits for a healthy Redis before starting in containers.
+
+**Analytics submission queues**
+
+- Click events are **queued on every redirect** when Redis and BullMQ are healthy; the worker **batches** writes (flush at **20** jobs or **5 s** timer) and sends **failed bulk inserts / flush errors** to the **dead-letter queue** (see [analytics.worker.ts](server/src/workers/analytics.worker.ts)).
+- If Redis is down, **the analytics queue does not operate**, so **real-time click analytics are not recorded** through this path; expiry/aggregation can still use **local schedulers**. **Hardening this path is work in progress.**
+- Queue clients are created at **module import** time; a down Redis can produce connection noise until it is back.
+
+**Text diagram (Redis modes):**
+
+```
+                    Shared Redis client (app singleton)
+                                        |
+              +-------------------------+-------------------------+
+              |                                                   |
+      Redis UP (connected)                                 Redis DOWN / close
+              |                                                   |
+      +-------+-------+                                   +-------+-------+
+      |               |                                   |               |
+      v               v                                   v               v
+ BullMQ +         Redirect                           setInterval      Cache: no-op
+ cache hit        cache OK                           local jobs      or cache miss
+ (expiry,         (hot path)                         (expiry,          (degraded)
+  aggregation)                                        aggregation)
+```
+
+<details>
+<summary>Mermaid version (GitHub / Mermaid-enabled preview)</summary>
+
+```mermaid
+flowchart LR
+  subgraph redisUp [Redis up]
+    BullMQ[BullMQ schedulers]
+    Cache[Redirect cache]
+  end
+  subgraph redisDown [Redis down or disconnected]
+    Local[Local setInterval jobs]
+    CacheDegraded[Cache no-op or miss]
+  end
+  SharedClient[Shared redis client]
+  SharedClient --> BullMQ
+  SharedClient --> Cache
+  SharedClient --> Local
+  SharedClient --> CacheDegraded
+```
+
+</details>
+
+---
+
+## Environment variables reference
+
+Configuration is validated at startup by [`server/src/config/env.ts`](server/src/config/env.ts). Copy [`server/.env.example`](server/.env.example) to `server/.env` and adjust. **Required** (no default): `DB_URL`, `REDIS_URL`, `BASE_URL`, `JWT_ACCESS_SECRET` (min 10 chars), `JWT_REFRESH_SECRET` (min 10 chars). All other keys have defaults if omitted.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `4000` | HTTP API port |
+| `MCP_SERVER_PORT` | `4200` | MCP server port |
+| `NODE_ENV` | `development` | `development` \| `production` \| `test` |
+| `APP_NAME` | `LinkForge` | Application display name |
+| `APP_VERSION` | `1.0.0` | Application version string |
+| `DB_URL` | — | MongoDB connection string (required) |
+| `REDIS_URL` | — | Redis connection string (required) |
+| `BASE_URL` | — | Public base URL of the API (required) |
+| `REDIS_COUNTER_KEY` | `url_shortener_counter` | Redis key for monotonic short-URL IDs |
+| `JWT_ACCESS_SECRET` | — | Secret for access tokens; min 10 characters |
+| `JWT_REFRESH_SECRET` | — | Secret for refresh tokens; min 10 characters |
+| `ACCESS_TOKEN_EXPIRE` | `10m` | Access token lifetime |
+| `REFRESH_TOKEN_EXPIRE` | `7d` | Refresh token lifetime |
+| `JWT_EXPIRES_IN` | `7d` | JWT expiry (general default where used) |
+| `URL_EXPIRY_SCHEDULER` | `url_expiry_scheduler` | BullMQ queue name for URL expiry |
+| `AGGREGATION_ANALYTICS_SCHEDULER` | `aggregation_analytics_scheduler` | BullMQ queue name for hourly aggregation |
+| `ANALYTICS_DEAD_LETTER_QUEUE` | `analytics_dead_letter_queue` | Dead-letter queue name |
+| `ANALYTICS_QUEUE` | `analytics-queue` | Main analytics submission queue name |
+| `URL_QUEUE` | `url-queue` | URL-related queue name |
+| `EMAIL_TRANSPORTER` | `smtp` | `smtp` \| `gmail` \| `sendgrid` |
+| `SMTP_HOST` | `localhost` | SMTP host |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_SECURE` | `false` | Use TLS |
+| `SMTP_USER` | `""` | SMTP username |
+| `SMTP_PASS` | `""` | SMTP password |
+| `EMAIL_FROM_ADDRESS` | `noreply@linkforge.com` | From address for transactional email |
+| `EMAIL_FROM_NAME` | `LinkForge` | From name |
+| `EMAIL_TEMPLATES_PATH` | `./src/utils/email-templates` | Path to email templates |
+| `VERIFICATION_TOKEN_EXPIRE` | `24h` | Email verification token TTL |
+| `RESET_TOKEN_EXPIRE` | `30m` | Password reset token TTL |
+| `EMAIL_REQUEST_RATE_LIMIT` | `3` | Rate limit for email-related requests |
+| `CLIENT_URL` | `http://localhost:3000` | Frontend URL (CORS, links in emails) |
+| `SERVER_TIMEOUT` | `30000` | Server timeout (ms) |
+| `KEEP_ALIVE_TIMEOUT` | `65000` | HTTP keep-alive timeout (ms) |
+| `HEADERS_TIMEOUT` | `66000` | Headers timeout (ms) |
+| `MAX_CONNECTIONS` | `1000` | Max connections hint |
+| `HEALTH_CHECK_TIMEOUT` | `5000` | Health check timeout (ms) |
+| `CORS_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed origins |
+
+**Docker vs local URLs**: On the Docker internal network use `DB_URL=mongodb://mongo:27017/url_shortener` and `REDIS_URL=redis://redis:6379`. On your host with `npm run dev`, use `localhost` for both (see `.env.example`).
+
 ---
 
 ## 🐳 Docker Setup
@@ -77,65 +307,38 @@ url-shortener/
 
 1. **Clone the repository**
    ```bash
-   https://github.com/Abhi-wolf/LinkForge.git
+   git clone https://github.com/Abhi-wolf/LinkForge.git
    cd LinkForge
    ```
 
-2. **Start the application**
+2. **Start the application** (Compose file is [`compose.yaml`](compose.yaml))
    ```bash
-   docker-compose up -d
+   docker compose -f compose.yaml up -d
    ```
+   Docker Compose V1 users can run `docker-compose -f compose.yaml up -d` instead.
 
 3. **Access the applications**
    - **Frontend**: http://localhost:3000
    - **Backend API**: http://localhost:4000
    - **MCP Server**: http://localhost:4200
+   - **Bull Board (queue UI)**: http://localhost:4000/ui
 
 ### Services
 
 The Docker Compose setup includes:
 
-- **MongoDB** (port 27017): Primary database for URL data
-- **Redis** (port 6379): Caching and session storage
+- **mongo** (port 27017): Primary database for URL data
+- **redis** (port 6379): Cache, ID counter, and BullMQ job backend
 - **Server** (ports 4000, 4200): Backend API and MCP server
 - **Client** (port 3000): React frontend application
 
-### Environment Variables
+### Environment variables (Docker)
 
-The server is configured with the following environment variables in `compose.yaml`:
+For the **full variable list and defaults**, see [Environment variables reference](#environment-variables-reference) above.
 
-```yaml
-environment:
-   -  PORT=4000
-   -  DB_URL=mongodb://localhost:27017/url_shortener
-   -  REDIS_URL=redis://localhost:6379
-   -  REDIS_COUNTER_KEY=url_shortener_counter
-   -  BASE_URL=http://localhost:4000
-   -  NODE_ENV=development
-   -  ANALYTICS_QUEUE=analytics_queue
-   -  JWT_ACCESS_SECRET=access_secret_123
-   -  JWT_REFRESH_SECRET=refresh_secret_123
-   -  ACCESS_TOKEN_EXPIRE=10m
-   -  REFRESH_TOKEN_EXPIRE=7d
-   -  URL_EXPIRY_SCHEDULER=url_expiry_scheduler
-   -  ANALYTICS_DEAD_LETTER_QUEUE=analytics_dead_letter_queue
-   -  AGGREGATION_ANALYTICS_SCHEDULER=aggregation_analytics_scheduler
-   -  EMAIL_TRANSPORTER=gmail
-   -  SMTP_HOST=localhost
-   -  SMTP_PORT=587
-   -  SMTP_SECURE=false
-   -  SMTP_USER=""
-   -  SMTP_PASS=""
-   -  EMAIL_FROM_ADDRESS=noreply@linkforge.com
-   -  EMAIL_FROM_NAME=LinkForge
-   -  EMAIL_TEMPLATES_PATH=./src/utils/email-templates
-   -  VERIFICATION_TOKEN_EXPIRE=24h
-   -  RESET_TOKEN_EXPIRE=30m
-   -  EMAIL_REQUEST_RATE_LIMIT=3
-   -  CLIENT_URL=http://localhost:3000
-```
+When running **inside** [`compose.yaml`](compose.yaml), set at least `DB_URL` and `REDIS_URL` using Compose service hostnames (`mongo`, `redis`). The bundled `server.environment` block may be minimal; extend it or mount a `.env` file so required secrets (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, etc.) and optional keys match production needs. Align names with [`server/src/config/env.ts`](server/src/config/env.ts) (for example use `JWT_ACCESS_SECRET`, not `JWT_SECRET`).
 
-⚠️ **Security Note**: Update the JWT secrets before deploying to production.
+⚠️ **Security**: Use strong JWT secrets in production; never commit real `.env` files.
 
 ---
 
@@ -214,7 +417,8 @@ The MCP server requires an API key for authentication. To generate an API key:
 - **RESTful API**: Full CRUD operations for URLs
 - **Authentication**: JWT-based auth with refresh tokens
 - **Analytics**: Click tracking with device and referrer data
-- **Caching**: Redis integration for performance
+- **Caching and counter**: Redis-backed redirect cache with graceful degradation when Redis is unavailable; monotonic ID allocation requires Redis
+- **Background jobs**: BullMQ for URL expiry and analytics aggregation, with local schedulers when Redis is unavailable (see [Redis and background jobs](#redis-and-background-jobs))
 - **Rate Limiting**: API rate limiting and security
 - **Health Checks**: Docker health checks for all services
 
@@ -224,6 +428,9 @@ The MCP server requires an API key for authentication. To generate an API key:
 
 #### Health Check
 - `GET /health-check` - Service health status
+
+#### Queue monitoring (development)
+- `GET /ui` - Bull Board UI for configured BullMQ queues
 
 #### MCP Server
 - `GET /sse` - SSE connection endpoint (requires `x-api-key` header)
@@ -255,7 +462,7 @@ The MCP server requires an API key for authentication. To generate an API key:
 
 3. **Start databases**
    ```bash
-   docker-compose up mongo redis -d
+   docker compose -f compose.yaml up mongo redis -d
    ```
 
 4. **Run development servers**
@@ -291,7 +498,7 @@ The Docker Compose setup includes health checks for all services:
 
 Health status can be checked with:
 ```bash
-docker-compose ps
+docker compose -f compose.yaml ps
 ```
 
 ---

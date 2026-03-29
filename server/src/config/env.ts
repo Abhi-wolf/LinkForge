@@ -1,10 +1,9 @@
 import dotenv from "dotenv";
-import z from "zod";
+import { z } from "zod";
 import logger from "./logger.config";
 
 function loadEnv() {
   dotenv.config();
-  logger.info(`Environment variables loaded`);
 }
 
 loadEnv();
@@ -69,16 +68,27 @@ const envSchema = z.object({
   
   // CORS configuration
   CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:5174,http://localhost:3000"),
+
+  LOG_LEVEL: z
+    .enum(["error", "warn", "info", "http", "verbose", "debug", "silly"])
+    .default("info"),
+  SERVICE_NAME: z.string().default("url-shortener-server"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (parsedEnv.success === false) {
-  logger.error("Invalid environment variables");
+  logger.error("Invalid environment variables", {
+    event: "ENV_VALIDATION_FAILED"
+  });
 
   Object.entries(parsedEnv.error.flatten().fieldErrors).forEach(
     ([key, value]) => {
-      logger.error(`${key}: ${value}`);
+      logger.error("Environment variable validation error", {
+        event: "ENV_FIELD_VALIDATION_FAILED",
+        field: key,
+        errors: value
+      });
     },
   );
   process.exit(1);

@@ -163,7 +163,10 @@ const hourlyAggregatedAnalyticsSchema =
   );
 
 
-hourlyAggregatedAnalyticsSchema.index({ urlId: 1, utcStartDate: 1, utcEndDate: 1 });
+hourlyAggregatedAnalyticsSchema.index(
+  { urlId: 1, utcStartDate: 1, utcEndDate: 1 },
+  { unique: true },
+);
 
 const HourlyAggregatedAnalytics =
   mongoose.model<IHourlyAggregatedAnalyticsModel>(

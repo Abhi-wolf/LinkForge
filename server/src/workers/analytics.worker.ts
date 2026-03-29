@@ -6,6 +6,8 @@ import { asyncLocalStorage } from "../utils/helpers/request.helpers";
 import { analyticsDeadLetterQueue } from "../queues/analytics.queue";
 import { AnalyticsFactory } from "../factories/analytics.factory";
 
+let analyticsWorker: Worker | null = null;
+
 
 // batching the job and inserting in bulk
 async function setUpAnalyticsWorker() {
@@ -21,8 +23,7 @@ async function setUpAnalyticsWorker() {
   const batchTimeout = 5000; // flush after every 5 second
 
   async function flushBatch() {
-    if (batch.length == 0) return;
-    if (isFlushing) return;
+ if (batch.length === 0 || isFlushing) return;
 
     isFlushing = true;
 
@@ -32,12 +33,18 @@ async function setUpAnalyticsWorker() {
     try {
       const result =
         await analyticsRepository.createRawAnalyticsBatch(toInsert);
-      logger.info(
-        `Flushed analytics: inserted=${result.insertedCount}, failed=${result.failed.length}`
-      );
+      logger.info("Analytics batch flushed successfully", {
+        event: "ANALYTICS_BATCH_FLUSH_SUCCESS",
+        insertedCount: result.insertedCount,
+        failedCount: result.failed.length
+      });
 
       if (result?.failed?.length > 0) {
-        logger.error(`${result.failed.length} analytics failed, moving to DLQ`);
+        logger.error("Analytics batch processing failed, moving to DLQ", {
+          event: "ANALYTICS_BATCH_FAILED",
+          failedCount: result.failed.length,
+          // err: error instanceof Error ? error : undefined
+        });
 
         await Promise.all(
           result.failed.map((failed: any) =>
@@ -56,7 +63,11 @@ async function setUpAnalyticsWorker() {
         );
       }
     } catch (error) {
-      logger.error("Failed to flush analytics batch, moving all to DLQ", error);
+      logger.error("Analytics batch flush failed, moving all to DLQ", {
+        event: "ANALYTICS_BATCH_FLUSH_FAILED",
+        batchSize: toInsert.length,
+        err: error instanceof Error ? error : undefined
+      });
 
       await Promise.all(
         toInsert.map((item) =>
@@ -76,6 +87,10 @@ async function setUpAnalyticsWorker() {
       );
     } finally {
       isFlushing = false;
+    // Re-flush immediately if new items arrived during flush
+    if (batch.length >= batchSize) {
+      await flushBatch();
+    }
     }
   }
 
@@ -88,7 +103,11 @@ async function setUpAnalyticsWorker() {
       return asyncLocalStorage.run(
         { correlationId: job.data.correlationId },
         async () => {
-          logger.info(`Queuing analytics job ${job.id}`);
+          logger.info("Analytics job queued for batch processing", {
+            event: "ANALYTICS_JOB_QUEUED",
+            jobId: job.id,
+            correlationId: job.data.correlationId
+          });
 
           batch.push({
             ...job.data,
@@ -111,15 +130,25 @@ async function setUpAnalyticsWorker() {
   worker.on("failed", async (job: Job | undefined, err: Error) => {
     if (!job) return;
 
-    logger.error(`Analytics job ${job.id} failed before batching:`, err);
+    logger.error("Analytics job failed before batching", {
+      event: "ANALYTICS_JOB_BATCH_FAILED",
+      jobId: job?.id,
+      correlationId: job?.data?.correlationId,
+      err: err instanceof Error ? err : undefined
+    });
   });
 
   worker.on("error", (err) => {
-    logger.error(`Analytics worker error:`, err);
+    logger.error("Analytics worker encountered error", {
+      event: "ANALYTICS_WORKER_ERROR",
+      err: err instanceof Error ? err : undefined
+    });
   });
 
   async function gracefulShutdown() {
-    logger.info("Shutting down analytics worker...");
+    logger.info("Analytics worker shutdown initiated", {
+      event: "ANALYTICS_WORKER_SHUTDOWN_START"
+    });
 
     clearInterval(flushInterval);
 
@@ -127,7 +156,9 @@ async function setUpAnalyticsWorker() {
 
     await worker.close();
 
-    logger.info("Analytics worker closed");
+    logger.info("Analytics worker shutdown completed", {
+      event: "ANALYTICS_WORKER_SHUTDOWN_SUCCESS"
+    });
 
   }
 
@@ -138,6 +169,12 @@ async function setUpAnalyticsWorker() {
 }
 
 export async function startAnalyticsWorker() {
-  await setUpAnalyticsWorker();
-  logger.info("Analytics worker started");
+  analyticsWorker = await setUpAnalyticsWorker(); // ← hold the reference
+  logger.info("Analytics worker started successfully", {
+    event: "ANALYTICS_WORKER_START_SUCCESS"
+  });
+}
+
+export function getAnalyticsWorker() {
+  return analyticsWorker;
 }

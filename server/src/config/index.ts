@@ -54,4 +54,7 @@ export const serverConfig = {
   // CORS configuration
   CORS_ORIGINS: env.CORS_ORIGINS,
   APP_VERSION: env.APP_VERSION,
+
+  LOG_LEVEL: env.LOG_LEVEL,
+  SERVICE_NAME: env.SERVICE_NAME,
 };

@@ -3,11 +3,13 @@ import {
   loggedInUserProcedure,
   publicProcedure,
 } from "../routers/trpc/context";
-import logger from "../config/logger.config";
+import { createContextLogger } from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { AuthFactory } from "../factories/auth.factory";
 import { serverConfig } from "../config";
+import { maskEmail } from "../utils/email.utils";
 
+const authLogger = createContextLogger("auth", "controller");
 const authService = AuthFactory.getAuthService();
 
 export const authController = {
@@ -25,13 +27,27 @@ export const authController = {
           .max(50, "Name cannot be more than 50 characters"),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      
       try {
+        authLogger.info("register", "User registration validation started", {
+          maskedEmail: maskEmail(input.email)
+        });
+        
         const result = await authService.register(input);
-        logger.info("User registered", result);
+        
+        authLogger.info("register", "User registration completed successfully", {
+          userId: result.user.id,
+          maskedEmail: maskEmail(input.email)
+        });
+        
         return result;
       } catch (error) {
-        logger.error(`Error registering user: `, error);
+        authLogger.warn("register", "User registration failed", {
+          maskedEmail: maskEmail(input.email),
+          err: error instanceof Error ? error : undefined
+        });
+        
         handleAppError(error);
       }
     }),
@@ -46,7 +62,12 @@ export const authController = {
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      
       try {
+        authLogger.info("login", "User login attempt started", {
+          maskedEmail: maskEmail(input.email)
+        });
+        
         const result = await authService.login(input);
 
         ctx.res.cookie("accessToken", result.accessToken, {
@@ -56,11 +77,17 @@ export const authController = {
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
-        logger.info(`User ${result.user.id} logged in`);
+        authLogger.info("login", "User login successful", {
+          userId: result.user.id,
+          maskedEmail: maskEmail(input.email)
+        });
 
         return result;
       } catch (error) {
-        logger.error(`Error logging user: `, error);
+        authLogger.warn("login", "User login failed due to invalid credentials", {
+          maskedEmail: maskEmail(input.email),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -73,6 +100,7 @@ export const authController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        authLogger.info("refreshToken", "Token refresh attempt started");
         const tokens = await authService.refreshTokens(input.refreshToken);
 
         ctx.res.cookie("accessToken", tokens.accessToken, {
@@ -82,21 +110,31 @@ export const authController = {
           maxAge: 10 * 60 * 1000, //  10 mins
         });
 
-        logger.info(`Token refreshed for user ${tokens.userId}`);
+        authLogger.info("refreshToken", "Token refresh successful", {
+          userId: tokens.userId
+        });
         return tokens;
       } catch (error) {
-        logger.error(`Error refreshing token: `, error);
+        authLogger.warn("refreshToken", "Token refresh failed due to invalid or expired token", {
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
 
   logout: loggedInUserProcedure.mutation(async ({ ctx }) => {
     try {
+      authLogger.info("logout", "User logout attempt started", { userId: ctx.user!.userId });
       await authService.logout(ctx.user!.userId);
-      logger.info(`User ${ctx.user!.userId} logged out`);
+      authLogger.info("logout", "User logout successful", {
+        userId: ctx.user!.userId
+      });
       ctx.res.clearCookie("accessToken");
     } catch (error) {
-      logger.error(`Error logging out user: `, error);
+      authLogger.error("logout", "Failed to process user logout", {
+        userId: ctx.user!.userId,
+        err: error instanceof Error ? error : undefined
+      });
       handleAppError(error);
     }
   }),
@@ -118,24 +156,34 @@ export const authController = {
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        authLogger.info("updateUser", "User profile update attempt started", { userId: ctx.user!.userId });
         const updatedUser = await authService.updateUser(
           ctx.user!.userId,
           input,
         );
-        logger.info(`User ${ctx.user!.userId} updated`);
+        authLogger.info("updateUser", "User profile updated successfully", {
+          userId: ctx.user!.userId
+        });
         return updatedUser;
       } catch (error) {
-        logger.error(`Error updating user: `, error);
+        authLogger.warn("updateUser", "User profile update failed", {
+          userId: ctx.user!.userId,
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
 
   me: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
+      authLogger.info("me", "Fetching user profile", { userId: ctx.user!.userId });
       const user = await authService.getUserById(ctx.user!.userId);
       return user;
     } catch (error) {
-      logger.error(`Error fetching user profile: `, error);
+      authLogger.error("me", "Failed to fetch user profile", {
+        userId: ctx.user!.userId,
+        err: error instanceof Error ? error : undefined
+      });
       handleAppError(error);
     }
   }),
@@ -148,11 +196,17 @@ export const authController = {
     )
     .mutation(async ({ input }) => {
       try {
+        authLogger.info("sendEmailVerification", "Email verification request started", { maskedEmail: maskEmail(input.email) });
         const result = await authService.sendEmailVerification(input.email);
-        logger.info(`Email verification sent for email: ${input.email}`);
+        authLogger.info("sendEmailVerification", "Email verification sent successfully", {
+          maskedEmail: maskEmail(input.email)
+        });
         return result;
       } catch (error) {
-        logger.error(`Error sending email verification: `, error);
+        authLogger.warn("sendEmailVerification", "Email verification send failed", {
+          maskedEmail: maskEmail(input.email),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -165,13 +219,17 @@ export const authController = {
     )
     .mutation(async ({ input }) => {
       try {
+        authLogger.info("verifyEmail", "Email verification attempt started");
         const result = await authService.verifyEmail(input.token);
-        logger.info(
-          `Email verified with token: ${input.token.substring(0, 8)}...`,
-        );
+        authLogger.info("verifyEmail", "Email verification completed successfully", {
+          tokenPrefix: input.token.substring(0, 8)
+        });
         return result;
       } catch (error) {
-        logger.error(`Error verifying email: `, error);
+        authLogger.warn("verifyEmail", "Email verification failed due to invalid token", {
+          tokenPrefix: input.token.substring(0, 8),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -184,11 +242,17 @@ export const authController = {
     )
     .mutation(async ({ input }) => {
       try {
+        authLogger.info("requestPasswordReset", "Password reset request started", { maskedEmail: maskEmail(input.email) });
         const result = await authService.requestPasswordReset(input.email);
-        logger.info(`Password reset requested for email: ${input.email}`);
+        authLogger.info("requestPasswordReset", "Password reset email sent successfully", {
+          maskedEmail: maskEmail(input.email)
+        });
         return result;
       } catch (error) {
-        logger.error(`Error requesting password reset: `, error);
+        authLogger.warn("requestPasswordReset", "Password reset email send failed", {
+          maskedEmail: maskEmail(input.email),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -205,16 +269,20 @@ export const authController = {
     )
     .mutation(async ({ input }) => {
       try {
+        authLogger.info("resetPassword", "Password reset attempt started");
         const result = await authService.resetPassword(
           input.token,
           input.newPassword,
         );
-        logger.info(
-          `Password reset completed with token: ${input.token.substring(0, 8)}...`,
-        );
+        authLogger.info("resetPassword", "Password reset completed successfully", {
+          tokenPrefix: input.token.substring(0, 8)
+        });
         return result;
       } catch (error) {
-        logger.error(`Error resetting password: `, error);
+        authLogger.warn("resetPassword", "Password reset failed due to invalid token", {
+          tokenPrefix: input.token.substring(0, 8),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),

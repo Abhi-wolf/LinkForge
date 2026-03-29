@@ -3,11 +3,12 @@ import {
   loggedInUserProcedure,
   publicProcedure,
 } from "../routers/trpc/context";
-import logger from "../config/logger.config";
+import { createContextLogger } from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { ApiKeyStatus } from "../models/apiKey.model";
 import { ApiKeyFactory } from "../factories/apiKey.factory";
 
+const apiKeyLogger = createContextLogger("auth", "controller");
 const apiKeyService = ApiKeyFactory.getApiKeyService();
 
 export const apiKeyController = {
@@ -21,31 +22,39 @@ export const apiKeyController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        apiKeyLogger.info("createApiKey", "API key creation attempt started", { userId: ctx.user!.userId });
         const result = await apiKeyService.createApiKey(
           ctx.user!.userId,
           input?.description,
         );
-        logger.info(`API key created for user ${ctx.user!.userId}`);
+        apiKeyLogger.info("createApiKey", "API key created successfully", {
+          userId: ctx.user!.userId,
+          apiKeyId: result.id
+        });
         return result;
       } catch (error) {
-        logger.error(
-          `Error creating API key for user ${ctx.user!.userId}:`,
-          error,
-        );
+        apiKeyLogger.warn("createApiKey", "API key creation failed", {
+          userId: ctx.user!.userId,
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
 
   getApiKeys: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
+      apiKeyLogger.info("getApiKeys", "Fetching API keys for user", { userId: ctx.user!.userId });
       const apiKeys = await apiKeyService.getUserApiKeys(ctx.user!.userId);
-      logger.info(`Fetched API keys for user ${ctx.user!.userId}`);
+      apiKeyLogger.info("getApiKeys", "API keys fetched successfully", {
+        userId: ctx.user!.userId,
+        count: apiKeys.length
+      });
       return apiKeys;
     } catch (error) {
-      logger.error(
-        `Error fetching API keys for user ${ctx.user!.userId}:`,
-        error,
-      );
+      apiKeyLogger.error("getApiKeys", "Failed to fetch user API keys", {
+        userId: ctx.user!.userId,
+        err: error instanceof Error ? error : undefined
+      });
       handleAppError(error);
     }
   }),
@@ -62,17 +71,29 @@ export const apiKeyController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        apiKeyLogger.info("updateStatus", "API key status update attempt started", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id,
+          status: input.status
+        });
         await apiKeyService.updateApiKeyStatus(
           input.id,
           input.status,
           ctx.user!.userId,
         );
-        logger.info(
-          `API key ${input.id} status updated to ${input.status} by user ${ctx.user!.userId}`,
-        );
+        apiKeyLogger.info("updateStatus", "API key status updated successfully", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id,
+          status: input.status
+        });
         return { success: true };
       } catch (error) {
-        logger.error(`Error updating API key status:`, error);
+        apiKeyLogger.warn("updateStatus", "API key status update failed", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id,
+          status: input.status,
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -88,11 +109,22 @@ export const apiKeyController = {
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        apiKeyLogger.info("deleteApiKey", "API key deletion attempt started", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id
+        });
         await apiKeyService.deleteApiKey(input.id, ctx.user!.userId);
-        logger.info(`API key ${input.id} deleted by user ${ctx.user!.userId}`);
+        apiKeyLogger.info("deleteApiKey", "API key deleted successfully", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id
+        });
         return { success: true };
       } catch (error) {
-        logger.error(`Error deleting API key:`, error);
+        apiKeyLogger.warn("deleteApiKey", "API key deletion failed", {
+          userId: ctx.user!.userId,
+          apiKeyId: input.id,
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
@@ -108,14 +140,24 @@ export const apiKeyController = {
     )
     .query(async ({ input }) => {
       try {
+        apiKeyLogger.info("verifyApiKey", "API key verification attempt started");
         const result = await apiKeyService.verifyApiKey(input.apiKey);
         if (!result) {
+          apiKeyLogger.warn("verifyApiKey", "API key verification failed - invalid key", {
+            apiKeyPrefix: input.apiKey.substring(0, 8)
+          });
           throw new Error("Invalid API key");
         }
-        logger.info(`API key verified for user ${result.userId}`);
+        apiKeyLogger.info("verifyApiKey", "API key verified successfully", {
+          userId: result.userId,
+          apiKeyPrefix: input.apiKey.substring(0, 8)
+        });
         return result;
       } catch (error) {
-        logger.error(`Error verifying API key:`, error);
+        apiKeyLogger.warn("verifyApiKey", "API key verification failed", {
+          apiKeyPrefix: input.apiKey.substring(0, 8),
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),

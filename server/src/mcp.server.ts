@@ -17,7 +17,9 @@ app.use(attachCorrelationIdMiddleware);
 export async function startMcpServer() {
   const transports: Record<string, SSEServerTransport> = {};
 
-  logger.info("Starting MCP SSE server...");
+  logger.info("Starting MCP SSE server", {
+    event: "MCP_SERVER_START"
+  });
   // SSE endpoint — Chatbot connects here
   app.get("/sse", apiKeyMiddleware, async (req, res): Promise<void> => {
     // Create a new server instance for each session to avoid state sharing issues

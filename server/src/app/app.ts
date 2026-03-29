@@ -3,11 +3,18 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { attachCorrelationIdMiddleware } from "../middlewares/correlation.middleware";
+import { loggingMiddleware } from "../middlewares/logging.middleware";
 import { setupRoutes } from "./routes";
 import { setupHealthChecks } from "./health";
 
 export function createApp(): Application {
   const app = express();
+
+  // Custom middleware for correlation ID (Must be first for logging)
+  app.use(attachCorrelationIdMiddleware);
+  
+  // Structured logging middleware
+  app.use(loggingMiddleware);
 
   // Security middleware
   app.use(helmet());
@@ -27,9 +34,6 @@ export function createApp(): Application {
       credentials: true,
     }),
   );
-
-  // Custom middleware
-  app.use(attachCorrelationIdMiddleware);
 
   // Setup routes
   setupRoutes(app);

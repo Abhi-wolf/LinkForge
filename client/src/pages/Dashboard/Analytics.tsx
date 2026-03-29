@@ -32,11 +32,13 @@ export default function Analytics() {
     const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
 
 
-    const { data: analyticsResponse, isLoading: analyticsLoading } = useAnalyticsForUrlId(
+    const { data: analyticsResponse, isLoading: analyticsLoading, error, isError } = useAnalyticsForUrlId(
         id!,
         appliedDateRange.from,
         appliedDateRange.to
     );
+
+    console.log("ANALYTICS = ", isError, error);
 
     const handleFetch = () => {
         setAppliedDateRange(dateRange);
@@ -65,6 +67,22 @@ export default function Analytics() {
         referrerData: analyticsResponse.analyticsNumbers.ref.map(r => ({ name: r.key, value: r.value }))
     } : null;
 
+
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+                <div className="p-6 rounded-full bg-muted/50">
+                    <ShieldAlert className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold">Link not found</h2>
+                    <p className="text-muted-foreground">The link you're looking for might have been deleted or is not available.</p>
+                </div>
+                <Button variant="outline" onClick={() => navigate('/dashboard/links')}>Return to My Links</Button>
+            </div>
+        );
+    }
+
     if (!analytics || !link) {
         return (
             <div className="space-y-6">
@@ -85,20 +103,7 @@ export default function Analytics() {
         );
     }
 
-    if (isLinkNotFound) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-                <div className="p-6 rounded-full bg-muted/50">
-                    <ShieldAlert className="h-12 w-12 text-muted-foreground" />
-                </div>
-                <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-bold">Link not found</h2>
-                    <p className="text-muted-foreground">The link you're looking for might have been deleted or is not available.</p>
-                </div>
-                <Button variant="outline" onClick={() => navigate('/dashboard/links')}>Return to My Links</Button>
-            </div>
-        );
-    }
+
 
     return (
         <div className="space-y-6">

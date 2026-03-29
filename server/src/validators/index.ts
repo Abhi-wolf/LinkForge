@@ -10,13 +10,28 @@ import logger from "../config/logger.config";
 export const validateRequestBody = (schema: AnyZodObject) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      logger.info("Validating request body");
+      logger.info("Request body validation started", {
+        event: "REQUEST_VALIDATION_START",
+        path: req.path,
+        method: req.method
+      });
       await schema.parseAsync(req.body);
-      logger.info("Request body is valid");
+      
+      logger.info("Request body validation passed", {
+        event: "REQUEST_VALIDATION_SUCCESS",
+        path: req.path,
+        method: req.method
+      });
+      
       next();
     } catch (error) {
       // If the validation fails,
-      logger.error("Request body is invalid", error);
+      logger.error("Request body validation failed", {
+        event: "REQUEST_VALIDATION_FAILED",
+        path: req.path,
+        method: req.method,
+        err: error instanceof Error ? error : undefined
+      });
       res.status(400).json({
         message: "Invalid request body",
         success: false,

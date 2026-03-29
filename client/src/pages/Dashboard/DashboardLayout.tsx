@@ -16,17 +16,27 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useAuthStore } from "@/store/authStore";
-import { useGetMe } from "@/hooks/useAuth";
+import { useGetMe, useLogout } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function DashboardLayout() {
   const { data: user } = useGetMe();
   console.log("DashboardLayout = ", user);
   // const user = useAuthStore(state => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const logoutMutation = useLogout();
   const location = useLocation();
 
   const handleLogout = () => {
-    logout();
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        logout();
+        toast.success("Logged out successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
   };
 
   if (location.pathname === "/dashboard") {

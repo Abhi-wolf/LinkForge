@@ -1,16 +1,16 @@
 import { z } from "zod";
 import {
   loggedInUserProcedure,
-  publicProcedure,
 } from "../routers/trpc/context";
-import logger from "../config/logger.config";
+import { createContextLogger } from "../config/logger.config";
 import { handleAppError } from "../utils/errors/trpc.error";
 import { AnalyticsFactory } from "../factories/analytics.factory";
 
+const analyticsLogger = createContextLogger("analytics", "controller");
 const analyticsService = AnalyticsFactory.getAnalyticsService();
 
 export const analyticsController = {
-  getAnalytics: publicProcedure
+  getAnalytics: loggedInUserProcedure
     .input(
       z.object({
         urlId: z
@@ -21,27 +21,45 @@ export const analyticsController = {
         endDate: z.coerce.date(), // ✅ converts ISO string → Date
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        analyticsLogger.info("getAnalytics", "Fetching URL analytics", {
+          urlId: input.urlId,
+          startDate: input.startDate,
+          endDate: input.endDate
+        });
         const result = await analyticsService.getAnalyticsForUrlId(
+          ctx.user!.userId,
           input.urlId,
           input.startDate,
           input.endDate,
         );
-
+        analyticsLogger.info("getAnalytics", "URL analytics fetched successfully", {
+          urlId: input.urlId
+        });
         return result;
       } catch (error) {
-        logger.error(`Error getting analytics URL : `, error);
+        analyticsLogger.warn("getAnalytics", "URL analytics fetch failed", {
+          urlId: input.urlId,
+          err: error instanceof Error ? error : undefined
+        });
         handleAppError(error);
       }
     }),
 
   getDashboardAnalytics: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
+      analyticsLogger.info("getDashboardAnalytics", "Fetching dashboard analytics", { userId: ctx.user!.userId });
       const result = await analyticsService.getUserAnalytics(ctx.user!.userId);
+      analyticsLogger.info("getDashboardAnalytics", "Dashboard analytics fetched successfully", {
+        userId: ctx.user!.userId
+      });
       return result;
     } catch (error) {
-      logger.error(`Error getting dashboard analytics: `, error);
+      analyticsLogger.error("getDashboardAnalytics", "Failed to fetch dashboard analytics", {
+        userId: ctx.user!.userId,
+        err: error instanceof Error ? error : undefined
+      });
       handleAppError(error);
     }
   }),

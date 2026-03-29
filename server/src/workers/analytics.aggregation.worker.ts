@@ -6,6 +6,7 @@ import {
   redis,
 } from "../config/redis";
 import logger from "../config/logger.config";
+import { asyncLocalStorage } from "../utils/helpers/request.helpers";
 import { AnalyticsFactory } from "../factories/analytics.factory";
 
 const analyticsService = AnalyticsFactory.getAnalyticsService();
@@ -15,6 +16,8 @@ let aggregationWorker: Worker | null = null;
 let localAggregationInterval: NodeJS.Timeout | null = null;
 let isSwitchingToLocalAgg = false;
 let isSwitchingToBullAgg = false;
+
+// TODO: analytics.worker.ts shares one batch + isFlushing across concurrent jobs (concurrency: 50) — use concurrency 1, a mutex, or per-job inserts.
 
 /**
  * Start the aggregation analytics scheduler using BullMQ
@@ -47,7 +50,9 @@ async function startAggregationBullScheduler() {
     },
   );
 
-  logger.info("Aggregation analytics scheduler started");
+  logger.info("Aggregation analytics scheduler started successfully", {
+    event: "ANALYTICS_AGGREGATION_SCHEDULER_START_SUCCESS"
+  });
 }
 
 /**
@@ -60,30 +65,49 @@ async function startAggregationBullWorker() {
     serverConfig.AGGREGATION_ANALYTICS_SCHEDULER,
     async (job) => {
       if (job.name === "aggregate-hourly-analytics") {
-        logger.info(`Processing aggregation analytics job ${job.id}`);
         const now = new Date();
         const end = new Date(now);
         end.setUTCMinutes(0, 0, 0);
         const start = new Date(end);
         start.setUTCHours(end.getUTCHours() - 1);
 
-        await analyticsService.aggregateAnalytics(start, end);
+        const correlationId = `agg-${job.id}-${start.toISOString()}`;
+        await asyncLocalStorage.run({ correlationId }, async () => {
+          logger.info("Processing aggregation analytics job", {
+            event: "ANALYTICS_AGGREGATION_JOB_PROCESSING",
+            jobId: job.id,
+            correlationId
+          });
+          await analyticsService.aggregateAnalytics(start, end);
+        });
       }
     },
     { connection: createNewRedisConnection() },
   );
 
   aggregationWorker.on("error", (err: Error) => {
-    logger.error("Aggregation analytics worker error:", err);
+    logger.error("Aggregation analytics worker encountered error", {
+      event: "ANALYTICS_AGGREGATION_WORKER_ERROR",
+      err: err instanceof Error ? err : undefined
+    });
   });
   aggregationWorker.on("completed", (job: any) => {
-    logger.info(`Aggregation analytics job ${job.id} completed`);
+    logger.info("Aggregation analytics job completed successfully", {
+      event: "ANALYTICS_AGGREGATION_JOB_SUCCESS",
+      jobId: job?.id
+    });
   });
   aggregationWorker.on("failed", (job: any, err: Error) => {
-    logger.error(`Aggregation analytics job ${job?.id} failed:`, err);
+    logger.error("Aggregation analytics job failed", {
+      event: "ANALYTICS_AGGREGATION_JOB_FAILED",
+      jobId: job?.id,
+      err: err instanceof Error ? err : undefined
+    });
   });
 
-  logger.info("Aggregation analytics worker started");
+  logger.info("Aggregation analytics worker started successfully", {
+    event: "ANALYTICS_AGGREGATION_WORKER_START_SUCCESS"
+  });
 }
 
 /**
@@ -98,7 +122,9 @@ async function stopAggregationBullWorkerAndScheduler() {
     await aggregationQueue.close();
     aggregationQueue = null;
   }
-  logger.warn("BullMQ aggregation analytics scheduler and worker stopped");
+  logger.warn("BullMQ aggregation analytics scheduler and worker stopped", {
+    event: "ANALYTICS_AGGREGATION_BULLMQ_STOP_SUCCESS"
+  });
 }
 
 /**
@@ -120,7 +146,10 @@ function startLocalAggregationWorker() {
         const start = new Date(end);
         start.setUTCHours(end.getUTCHours() - 1);
 
-        await analyticsService.aggregateAnalytics(start, end);
+        const correlationId = `agg-local-${start.toISOString()}`;
+        await asyncLocalStorage.run({ correlationId }, async () => {
+          await analyticsService.aggregateAnalytics(start, end);
+        });
       } catch (error) {
         logger.error("Local aggregation analytics job failed", error);
       }
@@ -136,7 +165,9 @@ function stopLocalAggregationWorker() {
   if (!localAggregationInterval) return;
   clearInterval(localAggregationInterval);
   localAggregationInterval = null;
-  logger.warn("Local aggregation analytics scheduler stopped");
+  logger.warn("Local aggregation analytics scheduler stopped", {
+    event: "ANALYTICS_AGGREGATION_LOCAL_SCHEDULER_STOP_SUCCESS"
+  });
 }
 
 /**
@@ -146,10 +177,14 @@ export async function startAnalyticsAggregationScheduler() {
   if (isRedisAvailable) {
     await startAggregationBullScheduler();
     await startAggregationBullWorker();
-    logger.info("Aggregation analytics started with BullMQ");
+    logger.info("Aggregation analytics started with BullMQ", {
+      event: "ANALYTICS_AGGREGATION_BULLMQ_START_SUCCESS"
+    });
   } else {
     startLocalAggregationWorker();
-    logger.info("Aggregation analytics started with local scheduler");
+    logger.info("Aggregation analytics started with local scheduler", {
+      event: "ANALYTICS_AGGREGATION_LOCAL_START_SUCCESS"
+    });
   }
 
   redis.once("ready", async () => {

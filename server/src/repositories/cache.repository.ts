@@ -30,14 +30,26 @@ export class CacheRepository {
    */
   async getNextId(): Promise<number> {
     if (!this.isAvailable()) {
+      logger.warn("Redis unavailable for ID generation", {
+        event: "CACHE_ID_GENERATION_REDIS_UNAVAILABLE"
+      });
       throw new InternalServerError("Redis is not available");
     }
     try {
       const key = serverConfig.REDIS_COUNTER_KEY;
       const result = await redis.incr(key);
+      
+      logger.debug("Generated new ID from Redis counter", {
+        event: "CACHE_ID_GENERATION_SUCCESS",
+        id: result
+      });
+      
       return result;
     } catch (error) {
-      logger.warn("Redis incr failed:", error);
+      logger.error("Redis counter increment failed", {
+        event: "CACHE_ID_GENERATION_FAILED",
+        err: error instanceof Error ? error : undefined
+      });
       throw new InternalServerError("Redis incr failed");
     }
   }
@@ -48,6 +60,10 @@ export class CacheRepository {
    */
   async setUrlMapping(data: IUrlCachDto) {
     if (!this.isAvailable()) {
+      logger.debug("Redis unavailable, skipping cache write", {
+        event: "CACHE_WRITE_REDIS_UNAVAILABLE",
+        shortUrl: data.shortUrl
+      });
       return;
     }
 
@@ -66,8 +82,19 @@ export class CacheRepository {
         })
         .expire(key, ttl)
         .exec();
+        
+      logger.debug("URL mapping cached successfully", {
+        event: "CACHE_WRITE_SUCCESS",
+        shortUrl: data.shortUrl,
+        urlId: data.urlId,
+        ttl
+      });
     } catch (error) {
-      logger.warn("Cache write failed:", error);
+      logger.warn("Cache write operation failed", {
+        event: "CACHE_WRITE_FAILED",
+        shortUrl: data.shortUrl,
+        err: error instanceof Error ? error : undefined
+      });
     }
   }
 
@@ -78,6 +105,10 @@ export class CacheRepository {
    */
   async getUrlMapping(shortUrl: string) {
     if (!this.isAvailable()) {
+      logger.debug("Redis unavailable, skipping cache read", {
+        event: "CACHE_READ_REDIS_UNAVAILABLE",
+        shortUrl
+      });
       return null;
     }
 
@@ -85,10 +116,22 @@ export class CacheRepository {
       const key = `url:${shortUrl}`;
       const cachedData = await redis.hgetall(key);
 
-      if (!cachedData || !cachedData.originalUrl) return null;
+      if (!cachedData || !cachedData.originalUrl) {
+        logger.debug("Cache miss for URL", {
+          event: "CACHE_MISS",
+          shortUrl
+        });
+        return null;
+      }
 
       // Refresh TTL on cache hit
       await redis.expire(key, this.calculateTTL());
+
+      logger.debug("Cache hit for URL", {
+        event: "CACHE_HIT",
+        shortUrl,
+        urlId: cachedData.urlId
+      });
 
       return {
         originalUrl: cachedData.originalUrl,
@@ -97,7 +140,11 @@ export class CacheRepository {
         expirationDate: cachedData.expirationDate || null,
       };
     } catch (error) {
-      logger.warn("Cache read failed:", error);
+      logger.warn("Cache read operation failed", {
+        event: "CACHE_READ_FAILED",
+        shortUrl,
+        err: error instanceof Error ? error : undefined
+      });
       return null;
     }
   }
@@ -108,14 +155,27 @@ export class CacheRepository {
    */
   async deleteUrlMapping(shortUrl: string) {
     if (!this.isAvailable()) {
+      logger.debug("Redis unavailable, skipping cache delete", {
+        event: "CACHE_DELETE_REDIS_UNAVAILABLE",
+        shortUrl
+      });
       return;
     }
 
     try {
       const key = `url:${shortUrl}`;
       await redis.del(key);
+      
+      logger.debug("URL mapping deleted from cache", {
+        event: "CACHE_DELETE_SUCCESS",
+        shortUrl
+      });
     } catch (error) {
-      logger.warn("Cache delete failed:", error);
+      logger.warn("Cache delete operation failed", {
+        event: "CACHE_DELETE_FAILED",
+        shortUrl,
+        err: error instanceof Error ? error : undefined
+      });
     }
   }
 }

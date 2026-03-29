@@ -1,8 +1,5 @@
 import mongoose from "mongoose";
-import {
-  HourlyAggregatedAnalytics,
-  RawAnalytics,
-} from "../models/analytics.model";
+import {  HourlyAggregatedAnalytics, RawAnalytics } from "../models/analytics.model";
 import logger from "../config/logger.config";
 import { CreateRawAnalyticsDto } from "../dtos/analytics.dto";
 
@@ -62,10 +59,11 @@ export class AnalyticsRepository {
       },
     });
 
-
-    logger.info(
-      `Starting aggregating analytics for date range : ${start} - ${end}`
-    );
+    logger.info("Hourly aggregation started", {
+      rawCount: rawAnalytics.length,
+      utcWindowStart: start.toISOString(),
+      utcWindowEnd: end.toISOString(),
+    });
 
     const aggregationMap: Map<
       string,
@@ -121,30 +119,54 @@ export class AnalyticsRepository {
       if (analytics.ref) increment(urlAggregation.ref, analytics.ref);
     }
 
-    for (const [urlId, data] of aggregationMap) {
-      await HourlyAggregatedAnalytics.create({
-        urlId,
-        utcEndDate: data.utcEndDate,
-        utcStartDate: data.utcStartDate,
-
-        clicks: data.clicks,
-        os: mapToObject(data.os),
-        browser: mapToObject(data.browser),
-        device: mapToObject(data.device),
-
-        country: mapToObject(data.country),
-        region: mapToObject(data.region),
-        city: mapToObject(data.city),
-        timezone: mapToObject(data.timezone),
-
-        utmSource: mapToObject(data.utmSource),
-        ref: mapToObject(data.ref),
+    if (aggregationMap.size === 0) {
+      logger.info("Hourly aggregation completed successfully", {
+        event: "ANALYTICS_AGGREGATION_SUCCESS",
+        rawCount: 0,
+        aggregatedUrlCount: 0,
+        utcWindowStart: start.toISOString(),
+        utcWindowEnd: end.toISOString(),
       });
+      return;
     }
 
-    logger.info(
-      `Ending aggregating analytics for date range : ${start} - ${end}`
+    const bulkOps = [...aggregationMap.entries()].map(([urlId, data]) => ({
+      updateOne: {
+        filter: {
+          urlId: new mongoose.Types.ObjectId(urlId),
+          utcStartDate: start,
+          utcEndDate: end,
+        },
+        update: {
+          $set: {
+            clicks: data.clicks,
+            os: mapToObject(data.os),
+            browser: mapToObject(data.browser),
+            device: mapToObject(data.device),
+            country: mapToObject(data.country),
+            region: mapToObject(data.region),
+            city: mapToObject(data.city),
+            timezone: mapToObject(data.timezone),
+            utmSource: mapToObject(data.utmSource),
+            ref: mapToObject(data.ref),
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    // Plain objects are valid for Map fields in MongoDB; Mongoose's BulkWrite types expect Map in $set.
+    await HourlyAggregatedAnalytics.bulkWrite(
+      bulkOps as Parameters<typeof HourlyAggregatedAnalytics.bulkWrite>[0],
+      { ordered: false },
     );
+
+    logger.info("Hourly aggregation finished", {
+      rawCount: rawAnalytics.length,
+      aggregatedUrlCount: aggregationMap.size,
+      utcWindowStart: start.toISOString(),
+      utcWindowEnd: end.toISOString(),
+    });
   }
 
   async getAggregatedAnalyticsForDate(urlId: string, start: Date, end: Date) {
@@ -203,7 +225,11 @@ export class AnalyticsRepository {
         failed: [],
       };
     } catch (error: any) {
-      console.error("createRawAnalyticsBatch error = ", error);
+      logger.error("Raw analytics batch creation failed", {
+        event: "ANALYTICS_BATCH_CREATE_FAILED",
+        batchSize: analytics.length,
+        err: error instanceof Error ? error : undefined
+      });
 
       if (error?.code === 11000 || error?.writeErrors) {
         const failed = error.writeErrors?.map((e: any) => ({

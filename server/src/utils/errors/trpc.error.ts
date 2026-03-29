@@ -1,5 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from "./app.error";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from "./app.error";
+import logger from "../../config/logger.config";
 
 export function handleAppError(error: any): never {
   if (error instanceof UnauthorizedError) {
@@ -34,7 +41,10 @@ export function handleAppError(error: any): never {
   }
 
   // Fallback for generic errors
-  console.error("Unhandle Error:", error);
+  logger.error("Unhandled error occurred", {
+    event: "TRPC_UNHANDLED_ERROR",
+    err: error instanceof Error ? error : undefined
+  });
   throw new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: error instanceof Error ? error.message : "An unexpected error occurred",

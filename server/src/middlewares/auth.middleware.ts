@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { t } from "../routers/trpc/trpc";
 import jwt from "jsonwebtoken";
 import { serverConfig } from "../config";
+import logger from "../config/logger.config";
 
 export function isAuthenticated() {
   return t.middleware(async ({ ctx, next }) => {
@@ -10,6 +11,9 @@ export function isAuthenticated() {
       ctx.req.cookies.accessToken;
 
     if (!token) {
+      logger.warn("Authentication failed - no token provided", {
+        event: "AUTH_TOKEN_MISSING"
+      });
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid authorization header format",
@@ -17,6 +21,9 @@ export function isAuthenticated() {
     }
 
     if (!serverConfig.JWT_ACCESS_SECRET) {
+      logger.error("Authentication configuration error - JWT secret missing", {
+        event: "AUTH_CONFIG_ERROR"
+      });
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "JWT_ACCESS_SECRET is not defined",
@@ -32,6 +39,10 @@ export function isAuthenticated() {
       ctx.user = decoded;
       return next({ ctx });
     } catch (err) {
+      logger.warn("Authentication failed - invalid token", {
+        event: "AUTH_TOKEN_INVALID",
+        err: err instanceof Error ? err : undefined
+      });
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid token",
@@ -59,6 +70,10 @@ export function attachUserIfPresent() {
       ctx.user = decoded;
       return next({ ctx });
     } catch (err) {
+      logger.warn("Optional authentication failed - invalid token", {
+        event: "AUTH_TOKEN_ATTACH_INVALID",
+        err: err instanceof Error ? err : undefined
+      });
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Invalid token",

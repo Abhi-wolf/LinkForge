@@ -34,7 +34,10 @@ async function startUrlExpiryBullScheduler() {
   });
 
   urlExpirySchedulerQueue.on("error", (error) => {
-    logger.error("Url expiry scheduler error:", error);
+    logger.error("URL expiry scheduler encountered error", {
+      event: "URL_EXPIRY_SCHEDULER_ERROR",
+      err: error instanceof Error ? error : undefined
+    });
   });
 
   await urlExpirySchedulerQueue.upsertJobScheduler(
@@ -55,7 +58,9 @@ async function startUrlExpiryBullScheduler() {
     },
   );
 
-  logger.info("URL expiry scheduler started");
+  logger.info("URL expiry scheduler started successfully", {
+    event: "URL_EXPIRY_SCHEDULER_START_SUCCESS"
+  });
 }
 
 /**
@@ -75,14 +80,23 @@ async function startUrlExpiryBullWorker() {
   );
 
   urlExpirySchedulerWorker.on("failed", (job, err) => {
-    logger.error(`Job ${job?.id} failed: `, err);
+    logger.error("URL expiry job failed", {
+      event: "URL_EXPIRY_JOB_FAILED",
+      jobId: job?.id,
+      err: err instanceof Error ? err : undefined
+    });
   });
 
   urlExpirySchedulerWorker.on("completed", (job) => {
-    logger.info(`Job ${job?.id} completed`);
+    logger.info("URL expiry job completed successfully", {
+      event: "URL_EXPIRY_JOB_SUCCESS",
+      jobId: job?.id
+    });
   });
 
-  logger.info("URL expiry worker started");
+  logger.info("URL expiry worker started successfully", {
+    event: "URL_EXPIRY_WORKER_START_SUCCESS"
+  });
 }
 
 /**
@@ -91,14 +105,19 @@ async function startUrlExpiryBullWorker() {
 function startLocalUrlExpiryWorker() {
   if (localInterval) return;
 
-  logger.warn("Redis not available, starting local URL expiry scheduler");
+  logger.warn("Redis unavailable, starting local URL expiry scheduler", {
+    event: "URL_EXPIRY_LOCAL_SCHEDULER_START"
+  });
 
   localInterval = setInterval(
     async () => {
       try {
         await urlService.runUrlExpiryJob();
       } catch (error) {
-        logger.error("Local expiry job failed", error);
+        logger.error("Local URL expiry job failed", {
+          event: "URL_EXPIRY_LOCAL_JOB_FAILED",
+          err: error instanceof Error ? error : undefined
+        });
       }
     },
     16 * 60 * 1000,
@@ -119,7 +138,9 @@ async function stopUrlExpiryBullWorkerAndScheduler() {
     urlExpirySchedulerQueue = null;
   }
 
-  logger.warn("BULLMQ URL expiry scheduler and worker stopped");
+  logger.warn("BullMQ URL expiry scheduler and worker stopped", {
+    event: "URL_EXPIRY_BULLMQ_STOP_SUCCESS"
+  });
 }
 
 /**
@@ -131,7 +152,9 @@ function stopLocalUrlExpiryWorker() {
   clearInterval(localInterval);
   localInterval = null;
 
-  logger.warn("Local URL expiry scheduler stopped");
+  logger.warn("Local URL expiry scheduler stopped", {
+    event: "URL_EXPIRY_LOCAL_SCHEDULER_STOP_SUCCESS"
+  });
 }
 
 /**
@@ -151,7 +174,9 @@ export async function startUrlExpiryWorker() {
     isSwitchingToBull = true;
 
     try {
-      logger.info("Redis connected, switching to BullMQ URL expiry system");
+      logger.info("Redis connected, switching to BullMQ URL expiry system", {
+        event: "URL_EXPIRY_SWITCH_TO_BULLMQ"
+      });
       stopLocalUrlExpiryWorker();
       await startUrlExpiryBullScheduler();
       await startUrlExpiryBullWorker();
@@ -166,7 +191,9 @@ export async function startUrlExpiryWorker() {
 
     isSwitchingToLocal = true;
     try {
-      logger.warn("Redis closed, switching to local URL expiry system");
+      logger.warn("Redis connection lost, switching to local URL expiry system", {
+        event: "URL_EXPIRY_SWITCH_TO_LOCAL"
+      });
       await stopUrlExpiryBullWorkerAndScheduler();
       startLocalUrlExpiryWorker();
     } finally {

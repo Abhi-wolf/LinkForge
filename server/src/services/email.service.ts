@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { EmailConfig, EmailOptions, EmailService as IEmailService } from '../types/email.types';
-import { EmailTemplateRenderer } from '../utils/email.utils';
+import { EmailTemplateRenderer, maskEmail } from '../utils/email.utils';
 import { emailConfig } from '../config/email.config';
 import logger from '../config/logger.config';
 
@@ -67,8 +67,11 @@ export class EmailService implements IEmailService {
       const result = await this.transporter.sendMail(mailOptions);
       logger.info(`Email sent successfully to ${options.to}`, { messageId: result.messageId });
     } catch (error) {
-      console.error("EMAIL SEND ERROR = ",error)
-      logger.error(`Failed to send email to ${options.to}`, error);
+      logger.error("Email sending failed", {
+        event: "EMAIL_SEND_FAILED",
+        maskedEmail: maskEmail(options.to),
+        err: error instanceof Error ? error : undefined
+      });
       throw new Error(`Email sending failed: ${error}`);
     }
   }
@@ -140,10 +143,15 @@ export class EmailService implements IEmailService {
   public async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
-      logger.info('Email service connection verified');
+      logger.info("Email service connection verified successfully", {
+        event: "EMAIL_SERVICE_CONNECTION_SUCCESS"
+      });
       return true;
     } catch (error) {
-      logger.error('Email service connection failed', error);
+      logger.error("Email service connection verification failed", {
+        event: "EMAIL_SERVICE_CONNECTION_FAILED",
+        err: error instanceof Error ? error : undefined
+      });
       return false;
     }
   }

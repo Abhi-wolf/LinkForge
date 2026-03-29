@@ -1,6 +1,7 @@
 import { rateLimit } from "express-rate-limit";
 import { TRPCError } from "@trpc/server";
 import { t } from "../routers/trpc/trpc";
+import logger from "../config/logger.config";
 
 export function createRateLimitMiddleware(
   options: Parameters<typeof rateLimit>[0],
@@ -15,6 +16,9 @@ export function createRateLimitMiddleware(
     await new Promise<void>((resolve, reject) => {
       limiter(ctx.req, ctx.res, (err) => {
         if (err) {
+          logger.warn("Rate limit exceeded - request rejected", {
+            event: "RATE_LIMIT_EXCEEDED"
+          });
           return reject(
             new TRPCError({
               code: "TOO_MANY_REQUESTS",
@@ -24,6 +28,9 @@ export function createRateLimitMiddleware(
         }
 
         if (ctx.res.statusCode === 429) {
+          logger.warn("Rate limit exceeded - response status 429", {
+            event: "RATE_LIMIT_EXCEEDED"
+          });
           return reject(
             new TRPCError({
               code: "TOO_MANY_REQUESTS",

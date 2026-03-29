@@ -81,3 +81,24 @@ export const generateVerificationToken = (): string => {
 export const generateResetToken = (): string => {
   return generateSecureToken(32);
 };
+
+/**
+ * Mask email address for logging purposes
+ * @param email - Email address to mask
+ * @returns Masked email in format "a***@domain.com"
+ */
+export const maskEmail = (email: string): string => {
+  if (!email || typeof email !== 'string') {
+    return 'invalid-email';
+  }
+  
+  const atIndex = email.indexOf('@');
+  if (atIndex <= 0 || atIndex >= email.length - 1) {
+    return 'invalid-email';
+  }
+  
+  const firstChar = email[0];
+  const domain = email.substring(atIndex);
+  
+  return `${firstChar}***${domain}`;
+};

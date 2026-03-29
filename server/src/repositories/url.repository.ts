@@ -132,6 +132,8 @@ export class UrlRepository {
    * @param options - Query options
    * @returns Promise<IUrl[]> - Array of URLs
    */
+
+  //TODO: instead of regex, use $text search
   async getUrlsOfUser(
     userId: string,
     options: {
@@ -221,7 +223,7 @@ export class UrlRepository {
   async findExpiredUrls() {
     return await Url.find({
       expirationDate: { $lt: new Date() },
-      status: { $ne: UrlStatus.EXPIRED },
+      status: UrlStatus.ACTIVE,
     });
   }
 
@@ -235,7 +237,7 @@ export class UrlRepository {
     return await Url.updateMany(
       {
         expirationDate: { $lt: new Date() },
-        status: { $ne: UrlStatus.EXPIRED },
+        status: UrlStatus.ACTIVE,
       },
       { status: UrlStatus.EXPIRED },
     );
