@@ -6,6 +6,7 @@ import { connectDB, disconnectDB } from "../config/db";
 import { startUrlExpiryWorker } from "../workers/url.expiry.worker";
 import { startAnalyticsAggregationScheduler } from "../workers/analytics.aggregation.worker";
 import { startAnalyticsWorker } from "../workers/analytics.worker";
+import { startMcpServer } from "../mcp.server";
 // import { startMcpServer } from "../mcp.server";
 
 export async function initializeServices(): Promise<void> {
@@ -52,6 +53,8 @@ export async function initializeServices(): Promise<void> {
     logger.info("All services initialized successfully", {
       event: "SERVICES_INITIALIZATION_SUCCESS"
     });
+
+    await startMcpServer();
   } catch (error) {
     logger.error("Service initialization failed", {
       event: "SERVICES_INIT_FAILED",

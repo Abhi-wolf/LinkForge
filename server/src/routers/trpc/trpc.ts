@@ -7,7 +7,7 @@ const trpcLogger = createContextLogger("system", "trpc");
 export const createContext = ({ req, res }: CreateExpressContextOptions) => ({
   req,
   res,
-  user: null as { userId: string, tokenVersion: number } | null
+  user: null as { userId: string; tokenVersion: number } | null,
 });
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
@@ -17,37 +17,54 @@ export const t = initTRPC.context<Context>().create();
 /**
  * Middleware for logging tRPC procedures
  */
-export const loggingMiddleware = t.middleware(async ({ path, type, next, input, ctx }) => {
-  const start = Date.now();
-  
-  // Log procedure start
-  trpcLogger.info("procedureStarted", `tRPC ${type} started: ${path}`, {
-    path,
-    type,
-    // Sanitize input if needed (e.g., remove passwords)
-    input: input && typeof input === 'object' ? { ...input, password: undefined } : input,
-  });
 
-  const result = await next();
-  const durationMs = Date.now() - start;
+export const loggingMiddleware = t.middleware(
+  async ({ path, type, next, input, ctx }) => {
+    const start = Date.now();
 
-  if (result.ok) {
-    trpcLogger.info("procedureFinished", `tRPC ${type} finished: ${path} - ${durationMs}ms`, {
+    trpcLogger.info("procedureStarted", `tRPC ${type} started: ${path}`, {
       path,
       type,
-      durationMs,
+      input:
+        input && typeof input === "object"
+          ? { ...input, password: undefined }
+          : input,
     });
-  } else {
-    trpcLogger.error("procedureFailed", `tRPC ${type} failed: ${path} - ${durationMs}ms`, {
-      path,
-      type,
-      durationMs,
-      error: result.error,
-    });
-  }
 
-  return result;
-});
+    try {
+      const result = await next();
 
-// Export a base procedure that includes the logging middleware
+      const durationMs = Date.now() - start;
+
+      trpcLogger.info(
+        "procedureFinished",
+        `tRPC ${type} finished: ${path} - ${durationMs}ms`,
+        {
+          path,
+          type,
+          durationMs,
+        },
+      );
+
+      return result;
+    } catch (error: any) {
+      const durationMs = Date.now() - start;
+
+      trpcLogger.error(
+        "procedureFailed",
+        `tRPC ${type} failed: ${path} - ${durationMs}ms`,
+        {
+          path,
+          type,
+          durationMs,
+          error: error?.message || "Unknown error",
+          code: error?.code,
+        },
+      );
+
+      throw error;
+    }
+  },
+);
+
 export const publicProcedure = t.procedure.use(loggingMiddleware);

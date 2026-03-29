@@ -134,6 +134,7 @@ export function registerUrlShortenerTools(server: McpServer, userId: string) {
         );
 
         const result = await analyticsService.getAnalyticsForUrlId(
+          userId,
           urlInfo.urlId,
           args.startDate,
           args.endDate,
