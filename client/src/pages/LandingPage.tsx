@@ -4,10 +4,11 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Link as LinkIcon, AlertCircle, ArrowRight, Zap } from 'lucide-react';
+import { Copy, Link as LinkIcon, AlertCircle, ArrowRight, Zap, Wifi, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useTRPC } from '@/services/trpc';
+import { useHealth } from '@/hooks/useHealth';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function LandingPage() {
     const [generatedLink, setGeneratedLink] = useState<ShortLink | null>(null);
+    const serviceHealth = useHealth();
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -44,7 +46,7 @@ export default function LandingPage() {
                 form.reset();
                 toast.success("Short link generated successfully!");
             },
-            onError: (error: any) => {
+            onError: (error) => {
                 const message = error?.data?.message || error.message || 'Failed to generate link';
                 toast.error(message);
             }
@@ -70,6 +72,68 @@ export default function LandingPage() {
             <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-pink-500/20 rounded-full mix-blend-multiply filter blur-[100px] animate-pulse delay-1000" />
 
             <PublicHeader showAuthButtons />
+
+            {/* Service Health Status */}
+            <div className="absolute top-20 right-4 z-20 group">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-help ${
+                    serviceHealth.isHealthy 
+                        ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
+                        : serviceHealth.isDegraded
+                        ? 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20'
+                        : 'bg-red-500/10 text-red-600 border border-red-500/20'
+                }`}>
+                    {serviceHealth.isLoading ? (
+                        <>
+                            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                            <span>Checking...</span>
+                        </>
+                    ) : serviceHealth.isHealthy ? (
+                        <>
+                            <Wifi className="h-4 w-4" />
+                            <span>All Systems Online</span>
+                        </>
+                    ) : serviceHealth.isDegraded ? (
+                        <>
+                            <Wifi className="h-4 w-4" />
+                            <span>Partial Service</span>
+                        </>
+                    ) : (
+                        <>
+                            <WifiOff className="h-4 w-4" />
+                            <span>Service Offline</span>
+                        </>
+                    )}
+                </div>
+                
+                {/* Tooltip */}
+                {serviceHealth.lastChecked && (
+                    <div className="absolute right-0 top-full mt-2 p-3 bg-background border border-border rounded-md shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap text-xs z-50 min-w-max">
+                        <div className="font-medium mb-1">
+                            {serviceHealth.isHealthy ? 'Status: All Systems Online' : 
+                             serviceHealth.isDegraded ? 'Status: Partial Service Available' : 
+                             'Status: Service Offline'}
+                        </div>
+                        <div className="text-muted-foreground">
+                            Last checked: {serviceHealth.lastChecked.toLocaleTimeString()}
+                        </div>
+                        {serviceHealth.status && (
+                            <>
+                                <div className="text-muted-foreground mt-1">
+                                    Uptime: {serviceHealth.status.uptimeHours.toFixed(2)}h
+                                </div>
+                                {serviceHealth.status.services && (
+                                    <div className="mt-2 space-y-1">
+                                        <div className="text-muted-foreground">
+                                            DB: {serviceHealth.status.services.database.status === 'up' ? '✓' : '✗'} {" "} 
+                                            Redis: {serviceHealth.status.services.redis.status === 'up' ? '✓' : '✗'}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
 
             <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 md:p-8 space-y-12">
                 <div className="text-center space-y-6 max-w-4xl mx-auto mt-10 md:mt-0">
