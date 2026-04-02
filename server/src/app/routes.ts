@@ -1,4 +1,5 @@
 import { Application } from "express";
+import client from "prom-client";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { trpcRouter } from "../routers/trpc";
 import { createContext } from "../routers/trpc/trpc";
@@ -34,6 +35,12 @@ export function setupRoutes(app: Application): void {
   });
 
   app.use("/ui", serverAdapter.getRouter());
+
+  // observability routes
+  app.get("/metrics", async (req, res) => {
+    res.set("Content-Type", client.register.contentType);
+    res.end(await client.register.metrics());
+  });
 
   // URL redirect route
   app.get("/fwd/:shortUrl", redirectUrl);

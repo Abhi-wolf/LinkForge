@@ -2,8 +2,8 @@ services:
   mongo:
     image: mongo:latest
     restart: unless-stopped
-    ports:
-      - 27017:27017
+    # ports:
+    #   - 27017:27017
     networks:
       - backend
     volumes:
@@ -17,8 +17,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - 6379:6379
+    # ports:
+    #   - 6379:6379
     networks:
       - backend
     volumes:
@@ -105,6 +105,24 @@ services:
     environment:
       - VITE_TRPC_URL=http://localhost:4000/trpc
       - VITE_BASE_URL=http://localhost:4000
+  
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./server/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - backend
+  
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3001:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend
 
 networks:
   backend:
@@ -113,3 +131,4 @@ networks:
 volumes:
   mongodb_url_shortener_data:
   redis_url_shortener_data:
+  grafana_data:
