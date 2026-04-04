@@ -5,9 +5,12 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "../utils/errors/app.error";
+import { CacheRepository } from "../repositories/cache.repository";
 
 export class ApiKeyService {
-  constructor(private readonly apiKeyRepository: ApiKeyRepository) { }
+  constructor(private readonly apiKeyRepository: ApiKeyRepository,
+    private readonly cacheRepository: CacheRepository
+  ) { }
 
   /**
    * Create a new API key
@@ -38,7 +41,19 @@ export class ApiKeyService {
    */
   async verifyApiKey(rawKey: string) {
     const hashedKey = this.hashKey(rawKey);
-    return await this.apiKeyRepository.findApiKey(hashedKey);
+
+    const cachedApiKeyData = await this.cacheRepository.getCachedApiKey(hashedKey);
+    if (cachedApiKeyData) {
+      return cachedApiKeyData;
+    }
+
+    const apiKey = await this.apiKeyRepository.findApiKey(hashedKey);
+
+    if (apiKey) {
+      await this.cacheRepository.setApiKeyCache(hashedKey, apiKey.userId.toString());
+    }
+
+    return apiKey;
   }
 
   /**
@@ -76,6 +91,8 @@ export class ApiKeyService {
     if (apiUserId !== userId) {
       throw new ForbiddenError("Access denied");
     }
+    
+    await this.cacheRepository.deleteCachedApiKey(apiKey.apiKey);
 
     return await this.apiKeyRepository.updateApiKeyStatus(id, status);
   }
@@ -102,6 +119,8 @@ export class ApiKeyService {
       throw new ForbiddenError("Access denied");
     }
 
+    await this.cacheRepository.deleteCachedApiKey(apiKey.apiKey);
+    
     return await this.apiKeyRepository.deleteApiKey(id);
   }
 

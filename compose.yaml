@@ -2,8 +2,8 @@ services:
   mongo:
     image: mongo:latest
     restart: unless-stopped
-    # ports:
-    #   - 27017:27017
+    ports:
+      - 27017:27017
     networks:
       - backend
     volumes:
@@ -17,8 +17,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    # ports:
-    #   - 6379:6379
+    ports:
+      - 6379:6379
     networks:
       - backend
     volumes:
@@ -32,8 +32,10 @@ services:
   server:
     build:
       context: ./server
-      dockerfile: Dockerfile
-      target: production
+      # dockerfile: Dockerfile
+      # target: production
+      dockerfile: Dockerfile.dev
+      target: development
     restart: unless-stopped
     ports:
       - 4000:4000
@@ -45,12 +47,17 @@ services:
         condition: service_healthy
     networks:
       - backend
+    volumes:
+      - ./server/src:/server/src
+      - ./server/package.json:/server/package.json
+      - ./server/tsconfig.json:/server/tsconfig.json
+      - /server/node_modules
     environment:
       - PORT=4000
       - DB_URL=mongodb://mongo:27017/url_shortener
       - REDIS_URL=redis://redis:6379
       - REDIS_COUNTER_KEY=url_shortener_counter
-      - NODE_ENV=production
+      - NODE_ENV=development
       - BASE_URL=http://localhost:4000
       - ANALYTICS_QUEUE=analytics_queue
       - JWT_ACCESS_SECRET=access_secret_123

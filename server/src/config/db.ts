@@ -41,8 +41,8 @@ export async function connectDB() {
 
 export async function disconnectDB() {
   try {
-    logger.info("Disconnecting from MongoDB", {
-      event: "DB_DISCONNECT_ATTEMPT"
+    logger.info("Disconnecting from database", {
+      event: "DB_DISCONNECT_START",
     });
     
     await mongoose.connection.close();

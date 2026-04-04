@@ -29,6 +29,17 @@ analyticsQueue.on("error", (error) => {
 
 export const analyticsDeadLetterQueue = new Queue(serverConfig.ANALYTICS_DEAD_LETTER_QUEUE, {
   connection: createNewRedisConnection(),
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 20000,
+    },
+    removeOnFail: {
+      age: 7 * 24 * 3600,   // Keep failed jobs for 7 days
+      count: 1000   // Keep only the last 1000 failures
+    },
+  },
 })
 
 analyticsDeadLetterQueue.on("error", (error) => {

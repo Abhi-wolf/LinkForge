@@ -8,22 +8,20 @@ import { AnalyticsFactory } from "../factories/analytics.factory";
 
 let analyticsWorker: Worker | null = null;
 
-
 // batching the job and inserting in bulk
 async function setUpAnalyticsWorker() {
-
   const analyticsRepository = AnalyticsFactory.getAnalyticsRepository();
 
   // batching the job and inserting in bulk
   let batch: any[] = [];
-  let isFlushing = false;  // to stop multiple flushes at the same time
+  let isFlushing = false; // to stop multiple flushes at the same time
 
   // TODO: change the batchsize and batchtimeout
   const batchSize = 20;
   const batchTimeout = 5000; // flush after every 5 second
 
   async function flushBatch() {
- if (batch.length === 0 || isFlushing) return;
+    if (batch.length === 0 || isFlushing) return;
 
     isFlushing = true;
 
@@ -33,10 +31,11 @@ async function setUpAnalyticsWorker() {
     try {
       const result =
         await analyticsRepository.createRawAnalyticsBatch(toInsert);
+
       logger.info("Analytics batch flushed successfully", {
         event: "ANALYTICS_BATCH_FLUSH_SUCCESS",
         insertedCount: result.insertedCount,
-        failedCount: result.failed.length
+        failedCount: result.failed.length,
       });
 
       if (result?.failed?.length > 0) {
@@ -57,16 +56,16 @@ async function setUpAnalyticsWorker() {
               },
               {
                 jobId: `failed-${failed.data.correlationId}-${failed.data.bullJobId}`,
-              }
-            )
-          )
+              },
+            ),
+          ),
         );
       }
     } catch (error) {
       logger.error("Analytics batch flush failed, moving all to DLQ", {
         event: "ANALYTICS_BATCH_FLUSH_FAILED",
         batchSize: toInsert.length,
-        err: error instanceof Error ? error : undefined
+        err: error instanceof Error ? error : undefined,
       });
 
       await Promise.all(
@@ -81,16 +80,16 @@ async function setUpAnalyticsWorker() {
             },
             {
               jobId: `failed-${item.correlationId}-${item.bullJobId}`,
-            }
-          )
-        )
+            },
+          ),
+        ),
       );
     } finally {
       isFlushing = false;
-    // Re-flush immediately if new items arrived during flush
-    if (batch.length >= batchSize) {
-      await flushBatch();
-    }
+      // Re-flush immediately if new items arrived during flush
+      if (batch.length >= batchSize) {
+        await flushBatch();
+      }
     }
   }
 
@@ -106,25 +105,20 @@ async function setUpAnalyticsWorker() {
           logger.info("Analytics job queued for batch processing", {
             event: "ANALYTICS_JOB_QUEUED",
             jobId: job.id,
-            correlationId: job.data.correlationId
+            correlationId: job.data.correlationId,
           });
 
           batch.push({
             ...job.data,
-            bullJobId: job.id
+            bullJobId: job.id,
           });
-
-          // Flush immediately if batch is full
-          if (batch.length >= batchSize) {
-            await flushBatch();
-          }
-        }
+        },
       );
     },
     {
       connection: createNewRedisConnection(),
       concurrency: 50,
-    }
+    },
   );
 
   worker.on("failed", async (job: Job | undefined, err: Error) => {
@@ -134,20 +128,20 @@ async function setUpAnalyticsWorker() {
       event: "ANALYTICS_JOB_BATCH_FAILED",
       jobId: job?.id,
       correlationId: job?.data?.correlationId,
-      err: err instanceof Error ? err : undefined
+      err: err instanceof Error ? err : undefined,
     });
   });
 
   worker.on("error", (err) => {
     logger.error("Analytics worker encountered error", {
       event: "ANALYTICS_WORKER_ERROR",
-      err: err instanceof Error ? err : undefined
+      err: err instanceof Error ? err : undefined,
     });
   });
 
   async function gracefulShutdown() {
     logger.info("Analytics worker shutdown initiated", {
-      event: "ANALYTICS_WORKER_SHUTDOWN_START"
+      event: "ANALYTICS_WORKER_SHUTDOWN_START",
     });
 
     clearInterval(flushInterval);
@@ -157,9 +151,8 @@ async function setUpAnalyticsWorker() {
     await worker.close();
 
     logger.info("Analytics worker shutdown completed", {
-      event: "ANALYTICS_WORKER_SHUTDOWN_SUCCESS"
+      event: "ANALYTICS_WORKER_SHUTDOWN_SUCCESS",
     });
-
   }
 
   process.on("SIGTERM", gracefulShutdown);
@@ -170,8 +163,9 @@ async function setUpAnalyticsWorker() {
 
 export async function startAnalyticsWorker() {
   analyticsWorker = await setUpAnalyticsWorker(); // ← hold the reference
+  
   logger.info("Analytics worker started successfully", {
-    event: "ANALYTICS_WORKER_START_SUCCESS"
+    event: "ANALYTICS_WORKER_START_SUCCESS",
   });
 }
 

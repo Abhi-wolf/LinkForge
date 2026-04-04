@@ -22,6 +22,9 @@ export function setupRoutes(app: Application): void {
     }),
   );
 
+  const collectDefaultMetrics = client.collectDefaultMetrics;
+  collectDefaultMetrics({ register: client.register });
+
   // Bull Board UI for queue monitoring
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath("/ui");

@@ -35,7 +35,7 @@ export const urlController = {
       try {
         urlLogger.info("create", "Short URL creation attempt started", {
           userId: ctx.user?.userId,
-          originalUrl: input.originalUrl
+          originalUrl: input.originalUrl,
         });
         const url = await urlService.createShortUrl(
           {
@@ -47,14 +47,14 @@ export const urlController = {
         );
         urlLogger.info("create", "Short URL created successfully", {
           userId: ctx.user?.userId,
-          shortUrl: url.shortUrl
+          shortUrl: url.shortUrl,
         });
         return { url };
       } catch (error) {
         urlLogger.warn("create", "Short URL creation failed", {
           userId: ctx.user?.userId,
           originalUrl: input.originalUrl,
-          err: error instanceof Error ? error : undefined
+          err: error instanceof Error ? error : undefined,
         });
         handleAppError(error);
       }
@@ -81,7 +81,7 @@ export const urlController = {
       try {
         urlLogger.info("update", "URL update attempt started", {
           userId: ctx.user!.userId,
-          urlId: input.id
+          urlId: input.id,
         });
         const url = await urlService.updateUrl(
           input.id,
@@ -95,14 +95,14 @@ export const urlController = {
         );
         urlLogger.info("update", "URL updated successfully", {
           userId: ctx.user!.userId,
-          urlId: input.id
+          urlId: input.id,
         });
         return { url };
       } catch (error) {
         urlLogger.warn("update", "URL update failed", {
           userId: ctx.user!.userId,
           urlId: input.id,
-          err: error instanceof Error ? error : undefined
+          err: error instanceof Error ? error : undefined,
         });
         handleAppError(error);
       }
@@ -118,19 +118,19 @@ export const urlController = {
       try {
         urlLogger.info("delete", "URL deletion attempt started", {
           userId: ctx.user!.userId,
-          urlId: input.id
+          urlId: input.id,
         });
         await urlService.deleteUrl(input.id, ctx.user!.userId);
         urlLogger.info("delete", "URL deleted successfully", {
           userId: ctx.user!.userId,
-          urlId: input.id
+          urlId: input.id,
         });
         return { success: true };
       } catch (error) {
         urlLogger.warn("delete", "URL deletion failed", {
           userId: ctx.user!.userId,
           urlId: input.id,
-          err: error instanceof Error ? error : undefined
+          err: error instanceof Error ? error : undefined,
         });
         handleAppError(error);
       }
@@ -147,14 +147,18 @@ export const urlController = {
     )
     .query(async ({ input }) => {
       try {
-        urlLogger.info("getOriginalUrl", "Original URL lookup started", { shortUrl: input.shortUrl });
+        urlLogger.info("getOriginalUrl", "Original URL lookup started", {
+          shortUrl: input.shortUrl,
+        });
         const result = await urlService.getOriginalUrl(input.shortUrl);
-        urlLogger.info("getOriginalUrl", "Original URL lookup successful", { shortUrl: input.shortUrl });
+        urlLogger.info("getOriginalUrl", "Original URL lookup successful", {
+          shortUrl: input.shortUrl,
+        });
         return result;
       } catch (error) {
         urlLogger.warn("getOriginalUrl", "Original URL lookup failed", {
           shortUrl: input.shortUrl,
-          err: error instanceof Error ? error : undefined
+          err: error instanceof Error ? error : undefined,
         });
         handleAppError(error);
       }
@@ -175,17 +179,22 @@ export const urlController = {
     )
     .query(async ({ input, ctx }) => {
       try {
-        urlLogger.info("getAllUrlsOfUser", "Fetching all URLs for user", { userId: ctx.user!.userId });
+        urlLogger.info("getAllUrlsOfUser", "Fetching all URLs for user", {
+          userId: ctx.user!.userId,
+        });
         const urls = await urlService.getAllUrlsOfUser(
           ctx.user!.userId,
           input || {},
         );
-        urlLogger.info("getAllUrlsOfUser", "URLs fetched successfully", { userId: ctx.user!.userId, count: urls.urls.length });
+        urlLogger.info("getAllUrlsOfUser", "URLs fetched successfully", {
+          userId: ctx.user!.userId,
+          count: urls.urls.length,
+        });
         return urls;
       } catch (error) {
         urlLogger.error("getAllUrlsOfUser", "Failed to fetch user URLs", {
           userId: ctx.user!.userId,
-          err: error instanceof Error ? error : undefined
+          err: error instanceof Error ? error : undefined,
         });
         handleAppError(error);
       }
@@ -219,7 +228,9 @@ export async function redirectUrl(req: Request, res: Response) {
   const url = await urlService.getOriginalUrl(shortUrl);
 
   if (!url) {
-    urlLogger.warn("redirectUrl", "URL not found for redirection", { shortUrl });
+    urlLogger.warn("redirectUrl", "URL not found for redirection", {
+      shortUrl,
+    });
     res.status(404).json({
       success: false,
       message: "URL not found",
@@ -236,7 +247,8 @@ export async function redirectUrl(req: Request, res: Response) {
     "direct";
 
   const analyticsData: IAnalyticsJob = {
-    urlId: url.urlId,
+    // urlId: url.urlId,
+    urlId: "jdfhsk",
     shortUrl: shortUrl,
     utmSource,
     ref,
@@ -248,8 +260,8 @@ export async function redirectUrl(req: Request, res: Response) {
     ...location,
   };
 
-  await addAnalyticsJob(analyticsData);
-
   //302 → Temporary redirect (browser re-checks every time) — good for tracking analytics
   res.redirect(url.originalUrl);
+
+  addAnalyticsJob(analyticsData);
 }
