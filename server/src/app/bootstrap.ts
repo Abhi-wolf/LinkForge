@@ -5,7 +5,7 @@ import { startUrlExpiryWorker } from "../workers/url.expiry.worker";
 import { startAnalyticsAggregationScheduler } from "../workers/analytics.aggregation.worker";
 import { startAnalyticsWorker } from "../workers/analytics.worker";
 import { startMcpServer } from "../mcp.server";
-import { startAnalyticsDLQWorker } from "../workers/analytics-dead-letter.worker";
+// import { startAnalyticsDLQWorker } from "../workers/analytics-dead-letter.worker";
 
 export async function initializeServices(): Promise<void> {
   logger.info("Service initialization started", {
@@ -18,7 +18,7 @@ export async function initializeServices(): Promise<void> {
 
     if (isRedisAvailable) {
       await startAnalyticsWorker();
-      await startAnalyticsDLQWorker();
+      // await startAnalyticsDLQWorker();
     } else {
       logger.warn("Redis unavailable, skipping analytics workers", {
         event: "ANALYTICS_WORKERS_SKIPPED",
