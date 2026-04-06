@@ -12,6 +12,7 @@ import { handleAppError } from "../utils/errors/trpc.error";
 import { UrlStatus } from "../models/url.model";
 import { getCorrelationId } from "../utils/helpers/request.helpers";
 import { UrlFactory } from "../factories/url.factory";
+import { urlNotFoundTotal, urlRedirectedTotal } from "../metrics/ur.metrics";
 
 const urlLogger = createContextLogger("url", "controller");
 const urlService = UrlFactory.getUrlService();
@@ -235,6 +236,7 @@ export async function redirectUrl(req: Request, res: Response) {
       success: false,
       message: "URL not found",
     });
+    urlNotFoundTotal.inc();
     return;
   }
 
@@ -263,5 +265,6 @@ export async function redirectUrl(req: Request, res: Response) {
   //302 → Temporary redirect (browser re-checks every time) — good for tracking analytics
   res.redirect(url.originalUrl);
 
+  urlRedirectedTotal.inc();
   addAnalyticsJob(analyticsData);
 }

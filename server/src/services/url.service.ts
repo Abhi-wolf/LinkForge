@@ -12,6 +12,7 @@ import {
   NotFoundError,
 } from "../utils/errors/app.error";
 import { createContextLogger } from "../config/logger.config";
+import { urlCreatedTotal } from "../metrics/ur.metrics";
 
 const urlLogger = createContextLogger("url", "service");
 
@@ -95,6 +96,8 @@ export class UrlService {
       shortUrl: url!.shortUrl,
       userId,
     });
+
+    urlCreatedTotal.inc();
 
     return {
       id: url!._id?.toString(),

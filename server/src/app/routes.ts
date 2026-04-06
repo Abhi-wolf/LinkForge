@@ -1,5 +1,4 @@
 import { Application } from "express";
-import client from "prom-client";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { trpcRouter } from "../routers/trpc";
 import { createContext } from "../routers/trpc/trpc";
@@ -11,6 +10,7 @@ import {
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
+import prometheusClient from "../config/prometheus";
 
 export function setupRoutes(app: Application): void {
   // tRPC routes
@@ -22,8 +22,8 @@ export function setupRoutes(app: Application): void {
     }),
   );
 
-  const collectDefaultMetrics = client.collectDefaultMetrics;
-  collectDefaultMetrics({ register: client.register });
+  const collectDefaultMetrics = prometheusClient.collectDefaultMetrics;
+  collectDefaultMetrics({ register: prometheusClient.register });
 
   // Bull Board UI for queue monitoring
   const serverAdapter = new ExpressAdapter();
@@ -41,8 +41,8 @@ export function setupRoutes(app: Application): void {
 
   // observability routes
   app.get("/metrics", async (req, res) => {
-    res.set("Content-Type", client.register.contentType);
-    res.end(await client.register.metrics());
+    res.set("Content-Type", prometheusClient.register.contentType);
+    res.end(await prometheusClient.register.metrics());
   });
 
   // URL redirect route

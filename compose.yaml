@@ -110,9 +110,35 @@ services:
     networks:
       - backend
     environment:
-      - VITE_TRPC_URL=http://localhost:4000/trpc
-      - VITE_BASE_URL=http://localhost:4000
+      - VITE_TRPC_URL=http://server:4000/trpc
+      - VITE_BASE_URL=http://server:4000
   
+  redis-exporter:
+    image: oliver006/redis_exporter
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - 9121:9121
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  mongo-exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: mongo-exporter
+    command: 
+      - --mongodb.uri=mongodb://mongo:27017
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017
+    ports:
+      - 9216:9216
+    depends_on:
+      - mongo
+    networks:
+      - backend
+
   prometheus:
     image: prom/prometheus
     ports:
@@ -121,6 +147,10 @@ services:
       - ./server/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - backend
+    depends_on:
+      - redis-exporter
+      - mongo-exporter
+      - server
   
   grafana:
     image: grafana/grafana
@@ -130,6 +160,8 @@ services:
       - grafana_data:/var/lib/grafana
     networks:
       - backend
+    depends_on:
+      - prometheus
 
 networks:
   backend:

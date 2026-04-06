@@ -21,6 +21,16 @@ export const t = initTRPC.context<Context>().create();
 export const loggingMiddleware = t.middleware(
   async ({ path, type, next, input, ctx }) => {
     const start = Date.now();
+    const req = ctx.req;
+
+    // trpcLogger.info("procedureStarted", `tRPC ${type} started: ${path}`, {
+    //   path,
+    //   type,
+    //   input:
+    //     input && typeof input === "object"
+    //       ? { ...input, password: undefined }
+    //       : input,
+    // });
 
     trpcLogger.info("procedureStarted", `tRPC ${type} started: ${path}`, {
       path,
@@ -29,6 +39,13 @@ export const loggingMiddleware = t.middleware(
         input && typeof input === "object"
           ? { ...input, password: undefined }
           : input,
+      // Add HTTP context
+      method: req.method,
+      url: req.url,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      correlationId: req.headers["x-correlation-id"],
+      userId: ctx.user?.userId,
     });
 
     try {
@@ -43,6 +60,10 @@ export const loggingMiddleware = t.middleware(
           path,
           type,
           durationMs,
+          // Add HTTP context
+          method: req.method,
+          url: req.url,
+          userId: ctx.user?.userId,
         },
       );
 
@@ -59,6 +80,10 @@ export const loggingMiddleware = t.middleware(
           durationMs,
           error: error?.message || "Unknown error",
           code: error?.code,
+          // Add HTTP context
+          method: req.method,
+          url: req.url,
+          userId: ctx.user?.userId,
         },
       );
 
