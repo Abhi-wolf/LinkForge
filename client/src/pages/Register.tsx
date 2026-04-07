@@ -27,13 +27,20 @@ import {
 } from "@/components/ui/form";
 
 import { useRegister } from "@/hooks/useAuth";
+import { validatePasswordComplexity } from "@/utils/password.validator";
 
 const registerSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(50, "Password must be less than 50 characters"),
+    .min(8, "Password must be at least 8 characters long")
+    .max(50, "Password must be less than 50 characters")
+    .refine((password) => {
+      const validation = validatePasswordComplexity(password);
+      return validation.isValid;
+    }, {
+      message: "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+    }),
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
@@ -135,19 +142,45 @@ export default function Register() {
                   <FormField
                     control={form.control}
                     name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="••••••••"
-                            type="password"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const passwordValidation = validatePasswordComplexity(field.value);
+                      return (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Create a strong password"
+                              type="password"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          {field.value && (
+                            <div className="mt-2 space-y-1">
+                              <p className="text-xs text-muted-foreground">Password requirements:</p>
+                              <div className="space-y-1">
+                                <div className={`flex items-center text-xs ${passwordValidation.requirements.minLength ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span className="mr-1">{passwordValidation.requirements.minLength ? '×' : '·'}</span>
+                                  At least 8 characters
+                                </div>
+                                <div className={`flex items-center text-xs ${passwordValidation.requirements.hasUppercase ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span className="mr-1">{passwordValidation.requirements.hasUppercase ? '×' : '·'}</span>
+                                  One uppercase letter
+                                </div>
+                                <div className={`flex items-center text-xs ${passwordValidation.requirements.hasLowercase ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span className="mr-1">{passwordValidation.requirements.hasLowercase ? '×' : '·'}</span>
+                                  One lowercase letter
+                                </div>
+                                <div className={`flex items-center text-xs ${passwordValidation.requirements.hasNumber ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span className="mr-1">{passwordValidation.requirements.hasNumber ? '×' : '·'}</span>
+                                  One number
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <Button type="submit" className="w-full" disabled={isLoading}>

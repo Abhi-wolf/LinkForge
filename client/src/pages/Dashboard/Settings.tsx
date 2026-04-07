@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { useGetMe, useUpdateUser } from "@/hooks/useAuth";
+import { validatePasswordComplexity } from "@/utils/password.validator";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -31,7 +32,16 @@ const profileSchema = z.object({
 
 const passwordSchema = z
   .object({
-    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    newPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters long")
+      .max(50, "Password must be less than 50 characters")
+      .refine((password) => {
+        const validation = validatePasswordComplexity(password);
+        return validation.isValid;
+      }, {
+        message: "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -168,19 +178,45 @@ export default function Settings() {
                 <FormField
                   control={passwordForm.control}
                   name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="••••••"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const passwordValidation = validatePasswordComplexity(field.value);
+                    return (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Create a strong password"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        {field.value && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs text-muted-foreground">Password requirements:</p>
+                            <div className="space-y-1">
+                              <div className={`flex items-center text-xs ${passwordValidation.requirements.minLength ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="mr-1">{passwordValidation.requirements.minLength ? '×' : '·'}</span>
+                                At least 8 characters
+                              </div>
+                              <div className={`flex items-center text-xs ${passwordValidation.requirements.hasUppercase ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="mr-1">{passwordValidation.requirements.hasUppercase ? '×' : '·'}</span>
+                                One uppercase letter
+                              </div>
+                              <div className={`flex items-center text-xs ${passwordValidation.requirements.hasLowercase ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="mr-1">{passwordValidation.requirements.hasLowercase ? '×' : '·'}</span>
+                                One lowercase letter
+                              </div>
+                              <div className={`flex items-center text-xs ${passwordValidation.requirements.hasNumber ? 'text-green-600' : 'text-red-600'}`}>
+                                <span className="mr-1">{passwordValidation.requirements.hasNumber ? '×' : '·'}</span>
+                                One number
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={passwordForm.control}

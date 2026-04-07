@@ -8,6 +8,7 @@ import { handleAppError } from "../utils/errors/trpc.error";
 import { AuthFactory } from "../factories/auth.factory";
 import { serverConfig } from "../config";
 import { maskEmail } from "../utils/email.utils";
+import { validatePasswordComplexity } from "../utils/password.validator";
 
 const authLogger = createContextLogger("auth", "controller");
 const authService = AuthFactory.getAuthService();
@@ -19,8 +20,14 @@ export const authController = {
         email: z.string().email(),
         password: z
           .string()
-          .min(6)
-          .max(50, "Password cannot be more than 50 characters"),
+          .min(8, "Password must be at least 8 characters long")
+          .max(50, "Password cannot be more than 50 characters")
+          .refine((password) => {
+            const validation = validatePasswordComplexity(password);
+            return validation.isValid;
+          }, {
+            message: "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+          }),
         name: z
           .string()
           .min(2)
@@ -84,7 +91,7 @@ export const authController = {
 
         return result;
       } catch (error) {
-        authLogger.warn("login", "User login failed due to invalid credentials", {
+        authLogger.warn("login", "User login failed", {
           maskedEmail: maskEmail(input.email),
           err: error instanceof Error ? error : undefined
         });
@@ -149,8 +156,14 @@ export const authController = {
           .optional(),
         password: z
           .string()
-          .min(6)
+          .min(8, "Password must be at least 8 characters long")
           .max(50, "Password cannot be more than 50 characters")
+          .refine((password) => {
+            const validation = validatePasswordComplexity(password);
+            return validation.isValid;
+          }, {
+            message: "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+          })
           .optional(),
       }),
     )
@@ -263,8 +276,14 @@ export const authController = {
         token: z.string(),
         newPassword: z
           .string()
-          .min(6)
-          .max(50, "Password cannot be more than 50 characters"),
+          .min(8, "Password must be at least 8 characters long")
+          .max(50, "Password cannot be more than 50 characters")
+          .refine((password) => {
+            const validation = validatePasswordComplexity(password);
+            return validation.isValid;
+          }, {
+            message: "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+          }),
       }),
     )
     .mutation(async ({ input }) => {
