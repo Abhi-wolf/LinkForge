@@ -8,6 +8,8 @@ import {
 
 const httpLogger = createContextLogger("system", "http");
 
+const SKIPPED_ROUTES = ["/trpc", "/metrics", "/ui"];
+
 export const loggingMiddleware = (
   req: Request,
   res: Response,
@@ -17,7 +19,7 @@ export const loggingMiddleware = (
   const { method, url } = req;
 
   // Skip logging for tRPC routes - let tRPC handle it
-  if (req.path.startsWith("/trpc")) {
+  if (SKIPPED_ROUTES.some((route) => req.path.startsWith(route))) {
     return next();
   }
 

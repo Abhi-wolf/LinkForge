@@ -80,6 +80,7 @@ services:
       - RESET_TOKEN_EXPIRE=30m
       - EMAIL_REQUEST_RATE_LIMIT=3
       - CLIENT_URL=http://localhost:3000
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000
       - APP_VERSION=1.0.0
       - APP_NAME=LinkForge
     healthcheck:
@@ -112,7 +113,7 @@ services:
     environment:
       - VITE_TRPC_URL=http://server:4000/trpc
       - VITE_BASE_URL=http://server:4000
-  
+
   redis-exporter:
     image: oliver006/redis_exporter
     container_name: redis-exporter
@@ -128,7 +129,7 @@ services:
   mongo-exporter:
     image: percona/mongodb_exporter:0.40
     container_name: mongo-exporter
-    command: 
+    command:
       - --mongodb.uri=mongodb://mongo:27017
     environment:
       - MONGODB_URI=mongodb://mongo:27017
@@ -145,13 +146,14 @@ services:
       - 9090:9090
     volumes:
       - ./server/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     networks:
       - backend
     depends_on:
       - redis-exporter
       - mongo-exporter
       - server
-  
+
   grafana:
     image: grafana/grafana
     ports:
@@ -170,4 +172,5 @@ networks:
 volumes:
   mongodb_url_shortener_data:
   redis_url_shortener_data:
+  prometheus_data:
   grafana_data:

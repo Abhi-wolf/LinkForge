@@ -56,18 +56,18 @@ const envSchema = z.object({
 
   EMAIL_REQUEST_RATE_LIMIT: z.coerce.number().default(3),
   CLIENT_URL: z.string().default("http://localhost:3000"),
-  
+
   // Server configuration
   SERVER_TIMEOUT: z.coerce.number().default(30000),
   KEEP_ALIVE_TIMEOUT: z.coerce.number().default(65000),
   HEADERS_TIMEOUT: z.coerce.number().default(66000),
   MAX_CONNECTIONS: z.coerce.number().default(1000),
-  
+
   // Health check configuration
   HEALTH_CHECK_TIMEOUT: z.coerce.number().default(5000),
-  
+
   // CORS configuration
-  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:5174,http://localhost:3000"),
+  CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
   LOG_LEVEL: z
     .enum(["error", "warn", "info", "http", "verbose", "debug", "silly"])
@@ -79,7 +79,7 @@ const parsedEnv = envSchema.safeParse(process.env);
 
 if (parsedEnv.success === false) {
   logger.error("Invalid environment variables", {
-    event: "ENV_VALIDATION_FAILED"
+    event: "ENV_VALIDATION_FAILED",
   });
 
   Object.entries(parsedEnv.error.flatten().fieldErrors).forEach(
@@ -87,7 +87,7 @@ if (parsedEnv.success === false) {
       logger.error("Environment variable validation error", {
         event: "ENV_FIELD_VALIDATION_FAILED",
         field: key,
-        errors: value
+        errors: value,
       });
     },
   );

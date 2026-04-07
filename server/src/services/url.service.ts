@@ -12,7 +12,7 @@ import {
   NotFoundError,
 } from "../utils/errors/app.error";
 import { createContextLogger } from "../config/logger.config";
-import { urlCreatedTotal } from "../metrics/ur.metrics";
+import { urlCreatedTotal } from "../metrics/url.metrics";
 
 const urlLogger = createContextLogger("url", "service");
 
@@ -81,6 +81,7 @@ export class UrlService {
     }
 
     urlLogger.info("createShortUrl", "Updating cache with new URL mapping", { shortUrl: url!.shortUrl });
+    
     await this.cacheRepository.setUrlMapping({
       shortUrl: url!.shortUrl,
       originalUrl: url!.originalUrl,

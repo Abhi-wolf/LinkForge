@@ -6,13 +6,14 @@ import { attachCorrelationIdMiddleware } from "../middlewares/correlation.middle
 import { loggingMiddleware } from "../middlewares/logging.middleware";
 import { setupRoutes } from "./routes";
 import { setupHealthChecks } from "./health";
+import { env } from "../config/env";
 
 export function createApp(): Application {
   const app = express();
 
   // Custom middleware for correlation ID (Must be first for logging)
   app.use(attachCorrelationIdMiddleware);
-  
+
   // Structured logging middleware
   app.use(loggingMiddleware);
 
@@ -24,13 +25,19 @@ export function createApp(): Application {
   app.use(cookieParser());
 
   // CORS configuration
+  const allowedOrigins = env.CORS_ORIGINS?.split(",");
+
   app.use(
     cors({
-      origin: [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:3000",
-      ],
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins?.includes(origin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("Not allowed by CORS"), false);
+      },
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     }),
   );

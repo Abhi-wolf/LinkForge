@@ -12,10 +12,7 @@ import {
 
 const app = createApp();
 
-/**
- * Add the error handler middleware
- */
-
+// Added error handling middleware
 app.use(appErrorHandler);
 app.use(genericErrorHandler);
 

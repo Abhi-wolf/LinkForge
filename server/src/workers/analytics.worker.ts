@@ -5,6 +5,7 @@ import logger from "../config/logger.config";
 import { asyncLocalStorage } from "../utils/helpers/request.helpers";
 import { analyticsDeadLetterQueue } from "../queues/analytics.queue";
 import { AnalyticsFactory } from "../factories/analytics.factory";
+import { analyticsJobFailures } from "../metrics/queue.metrics";
 
 let analyticsWorker: Worker | null = null;
 
@@ -45,6 +46,11 @@ async function setUpAnalyticsWorker() {
           // err: error instanceof Error ? error : undefined
         });
 
+        analyticsJobFailures.inc(
+          { error_type: "ANALYTICS_BATCH_FAILED" },
+          result.failed.length,
+        );
+
         await Promise.all(
           result.failed.map((failed: any) =>
             analyticsDeadLetterQueue.add(
@@ -67,6 +73,11 @@ async function setUpAnalyticsWorker() {
         batchSize: toInsert.length,
         err: error instanceof Error ? error : undefined,
       });
+
+      analyticsJobFailures.inc(
+        { error_type: "ANALYTICS_BATCH_FLUSH_FAILED" },
+        toInsert.length,
+      );
 
       await Promise.all(
         toInsert.map((item) =>
@@ -163,7 +174,7 @@ async function setUpAnalyticsWorker() {
 
 export async function startAnalyticsWorker() {
   analyticsWorker = await setUpAnalyticsWorker(); // ← hold the reference
-  
+
   logger.info("Analytics worker started successfully", {
     event: "ANALYTICS_WORKER_START_SUCCESS",
   });

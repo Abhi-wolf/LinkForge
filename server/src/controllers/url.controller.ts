@@ -12,7 +12,7 @@ import { handleAppError } from "../utils/errors/trpc.error";
 import { UrlStatus } from "../models/url.model";
 import { getCorrelationId } from "../utils/helpers/request.helpers";
 import { UrlFactory } from "../factories/url.factory";
-import { urlNotFoundTotal, urlRedirectedTotal } from "../metrics/ur.metrics";
+import { urlRedirectedTotal } from "../metrics/url.metrics";
 
 const urlLogger = createContextLogger("url", "controller");
 const urlService = UrlFactory.getUrlService();
@@ -236,7 +236,6 @@ export async function redirectUrl(req: Request, res: Response) {
       success: false,
       message: "URL not found",
     });
-    urlNotFoundTotal.inc();
     return;
   }
 
@@ -249,8 +248,7 @@ export async function redirectUrl(req: Request, res: Response) {
     "direct";
 
   const analyticsData: IAnalyticsJob = {
-    // urlId: url.urlId,
-    urlId: "jdfhsk",
+    urlId: url.urlId,
     shortUrl: shortUrl,
     utmSource,
     ref,

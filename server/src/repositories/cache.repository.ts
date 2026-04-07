@@ -2,6 +2,7 @@ import { serverConfig } from "../config";
 import logger from "../config/logger.config";
 import { isRedisAvailable, redis } from "../config/redis";
 import type { IUrlCachDto } from "../dtos/url.dto";
+import { cacheApiKeyHitsTotal, cacheApiKeyMissesTotal, cacheUrlHitsTotal, cacheUrlMissesTotal } from "../metrics/redis.metrics";
 import { InternalServerError } from "../utils/errors/app.error";
 
 export class CacheRepository {
@@ -127,6 +128,9 @@ export class CacheRepository {
           event: "CACHE_MISS",
           shortUrl,
         });
+
+        cacheUrlMissesTotal.inc();
+
         return null;
       }
 
@@ -138,6 +142,8 @@ export class CacheRepository {
         shortUrl,
         urlId: cachedData.urlId,
       });
+
+      cacheUrlHitsTotal.inc();
 
       return {
         originalUrl: cachedData.originalUrl,
@@ -229,6 +235,9 @@ export class CacheRepository {
           event: "CACHE_MISS",
           apiKey,
         });
+
+        cacheApiKeyMissesTotal.inc();
+        
         return null;
       }
 
@@ -237,6 +246,8 @@ export class CacheRepository {
         apiKey,
         userId,
       });
+
+      cacheApiKeyHitsTotal.inc();
 
       return {
         userId,
