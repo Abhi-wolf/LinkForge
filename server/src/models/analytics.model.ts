@@ -35,6 +35,7 @@ const rawAnalyticsSchema = new mongoose.Schema<IRawAnalyticsModel>(
     urlId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
+      ref: "Url",
     },
     os: {
       type: String,
@@ -97,6 +98,7 @@ const hourlyAggregatedAnalyticsSchema =
       urlId: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
+        ref: "Url",
       },
       clicks: {
         type: Number,

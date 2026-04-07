@@ -14,7 +14,7 @@ export class AnalyticsService {
   constructor(
     private readonly analyticsRepository: AnalyticsRepository,
     private readonly urlRepository: UrlRepository,
-  ) { }
+  ) {}
 
   /**
    * Create raw analytics entry
@@ -23,25 +23,39 @@ export class AnalyticsService {
    * @throws NotFoundError - If URL not found
    */
   async createRawAnalytics(data: CreateRawAnalyticsDto) {
-    analyticsLogger.info("createRawAnalytics", "Recording raw analytics", { shortUrl: data.shortUrl });
+    analyticsLogger.info("createRawAnalytics", "Recording raw analytics", {
+      shortUrl: data.shortUrl,
+    });
     const url = await this.urlRepository.findByShortUrl(data.shortUrl);
 
     if (!url) {
-      analyticsLogger.warn("createRawAnalytics", "URL not found for analytics", { shortUrl: data.shortUrl });
+      analyticsLogger.warn(
+        "createRawAnalytics",
+        "URL not found for analytics",
+        { shortUrl: data.shortUrl },
+      );
       throw new NotFoundError("URL not found for analytics");
     }
 
-    analyticsLogger.info("createRawAnalytics", "Creating raw analytics record in DB", { urlId: url._id?.toString() });
+    analyticsLogger.info(
+      "createRawAnalytics",
+      "Creating raw analytics record in DB",
+      { urlId: url._id?.toString() },
+    );
     const rawAnalytics = await this.analyticsRepository.createRawAnalytics({
       ...data,
       urlId: url._id?.toString(),
       utcDate: new Date(data.utcDate),
     });
 
-    analyticsLogger.info("createRawAnalytics", "Raw analytics recorded successfully", {
-      shortUrl: data.shortUrl,
-      urlId: url._id?.toString(),
-    });
+    analyticsLogger.info(
+      "createRawAnalytics",
+      "Raw analytics recorded successfully",
+      {
+        shortUrl: data.shortUrl,
+        urlId: url._id?.toString(),
+      },
+    );
 
     return rawAnalytics;
   }
@@ -52,7 +66,10 @@ export class AnalyticsService {
    * @param end - End date
    */
   async aggregateAnalytics(start: Date, end: Date) {
-    analyticsLogger.info("aggregateAnalytics", "Starting aggregation", { start, end });
+    analyticsLogger.info("aggregateAnalytics", "Starting aggregation", {
+      start,
+      end,
+    });
     await this.analyticsRepository.aggregateAnalytics(start, end);
     analyticsLogger.info("aggregateAnalytics", "Aggregation completed");
   }
@@ -71,7 +88,11 @@ export class AnalyticsService {
     endDate: string,
     timezone: string,
   ) {
-    analyticsLogger.info("getAggregatedAnalyticsForDate", "Fetching aggregated analytics", { urlId, startDate, endDate, timezone });
+    analyticsLogger.info(
+      "getAggregatedAnalyticsForDate",
+      "Fetching aggregated analytics",
+      { urlId, startDate, endDate, timezone },
+    );
     const utcStartDates = getUTCRange(startDate, timezone);
     const utcEndDates = getUTCRange(endDate, timezone);
 
@@ -82,95 +103,79 @@ export class AnalyticsService {
         utcEndDates.utcEnd,
       );
 
-    analyticsLogger.info("getAggregatedAnalyticsForDate", "Aggregated analytics fetched", { urlId, count: analytics.length });
+    analyticsLogger.info(
+      "getAggregatedAnalyticsForDate",
+      "Aggregated analytics fetched",
+      { urlId, count: analytics.length },
+    );
     return analytics;
   }
 
   /**
-   * Get user analytics
+   * Get user dashboard analytics
    * @param userId - User ID
    * @returns Promise<any> - User analytics
-   * @todo Remove N+1 query problem
    */
-  // TODO : remove N+1 query
-  async getUserAnalytics(userId: string) {
-    analyticsLogger.info("getUserAnalytics", "Fetching dashboard analytics for user", { userId });
-    const baseUrl = serverConfig.BASE_URL;
+  async getUserDashboardAnalytics(userId: string) {
+    const baseUrl=serverConfig.BASE_URL;
 
-    analyticsLogger.info("getUserAnalytics", "Fetching user URLs", { userId });
-    const userUrls = await this.urlRepository.getUrlsOfUser(userId);
-    const activeLinksCount = userUrls.filter(
-      (url) => url.status === UrlStatus.ACTIVE,
-    )?.length;
-
-    analyticsLogger.info("getUserAnalytics", "Categorizing links", { userId, totalLinks: userUrls.length });
-    const inactiveLinks = userUrls
-      .filter((url) => url.status === UrlStatus.INACTIVE)
-      .map((link) => ({
-        id: link.id,
-        shortUrl: link.shortUrl,
-        originalUrl: link.originalUrl,
-        fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
-        createdAt: link.createdAt,
-        status: link.status,
-      }));
-
-    const expiredLinks = userUrls
-      .filter((url) => url.status === UrlStatus.EXPIRED)
-      .map((link) => ({
-        id: link.id,
-        shortUrl: link.shortUrl,
-        originalUrl: link.originalUrl,
-        fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
-        createdAt: link.createdAt,
-        status: link.status,
-      }));
-
-    // recent links created in the last 7 days
-    const sortedLinks = userUrls.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    analyticsLogger.info(
+      "getUserDashboardAnalytics",
+      "Fetching user dashboard analytics",
+      { userId },
     );
 
-    const recentLinks = sortedLinks?.slice(0, 5)?.map((link) => ({
-      id: link.id,
-      shortUrl: link.shortUrl,
-      originalUrl: link.originalUrl,
-      fullUrl: `${baseUrl}/fwd/${link.shortUrl}`,
-      createdAt: link.createdAt,
-      status: link.status,
+    let userUrls =
+      await this.analyticsRepository.getUserDashboardAnalytics(userId);
+
+    userUrls = userUrls?.map((url) => ({
+      ...url,
+      fullUrl: `${baseUrl}/fwd/${url.shortUrl}`,
     }));
 
+    analyticsLogger.info(
+      "getUserDashboardAnalytics",
+      "User dashboard analytics fetched",
+      { userId, count: userUrls.length },
+    );
+
     const totalLinks = userUrls.length;
-    let totalClicks = 0;
-    const topPerformingLinks = [];
+    const activeLinks = userUrls.filter(
+      (url) => url.status === UrlStatus.ACTIVE,
+    ).length;
+    const totalClicks = userUrls.reduce((acc, url) => acc + url.totalClicks, 0);
 
-    analyticsLogger.info("getUserAnalytics", "Fetching click counts for each URL (N+1 source)", { userId });
-    for (let url of userUrls) {
-      const urlClicks = await this.analyticsRepository.getTotalClicksForUrl(
-        url.id,
-      );
+    const recentLinks = userUrls.slice(0, 5);
 
-      totalClicks += urlClicks;
+    const inactiveLinks = userUrls.filter(
+      (url) => url.status === UrlStatus.INACTIVE,
+    );
 
-      topPerformingLinks.push({
-        id: url.id,
-        shortUrl: url.shortUrl,
-        clicks: urlClicks,
-        fullUrl: `${baseUrl}/fwd/${url.shortUrl}`,
-        originalUrl: url.originalUrl,
-        status: url.status,
-      });
-    }
+    let expiredLinks = userUrls.filter(
+      (url) => url.status === UrlStatus.EXPIRED,
+    );
 
-    analyticsLogger.info("getUserAnalytics", "Sorting top performing links", { userId });
-    topPerformingLinks.sort((a, b) => b.clicks - a.clicks);
-    topPerformingLinks.splice(5);
+    expiredLinks =
+      expiredLinks
+        .sort(
+          (a, b) =>
+            new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime(),
+        )
+        ?.slice(0, 5) || [];
 
-    analyticsLogger.info("getUserAnalytics", "User analytics compiled successfully", { userId, totalClicks });
+    const topPerformingLinks = [...userUrls]
+      .sort((a, b) => b.totalClicks - a.totalClicks)
+      .slice(0, 5);
+
+    analyticsLogger.info(
+      "getUserDashboardAnalytics",
+      "User dashboard analytics compiled",
+      { userId },
+    );
+
     return {
       totalLinks,
-      activeLinks: activeLinksCount,
+      activeLinks,
       totalClicks,
       recentLinks,
       inactiveLinks,
@@ -186,8 +191,17 @@ export class AnalyticsService {
    * @param endDate - End date
    * @returns Promise<any> - Analytics data
    */
-  async getAnalyticsForUrlId(userId: string, urlId: string, startDate: Date, endDate: Date) {
-    analyticsLogger.info("getAnalyticsForUrlId", "Fetching detailed analytics for URL", { urlId, startDate, endDate });
+  async getAnalyticsForUrlId(
+    userId: string,
+    urlId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    analyticsLogger.info(
+      "getAnalyticsForUrlId",
+      "Fetching detailed analytics for URL",
+      { urlId, startDate, endDate },
+    );
     // frontend will send date in ISO formate with ISO in it - when we use new Date
     // it will automatically get converted to UTC dates
     const utcStartDate = new Date(startDate);
@@ -197,12 +211,17 @@ export class AnalyticsService {
     const urlInfo = await this.urlRepository.findById(urlId);
 
     if (!urlInfo || (urlInfo.userId && urlInfo.userId?.toString() !== userId)) {
-      analyticsLogger.warn("getAnalyticsForUrlId", "URL not found for analytics", { urlId });
+      analyticsLogger.warn(
+        "getAnalyticsForUrlId",
+        "URL not found for analytics",
+        { urlId },
+      );
       throw new NotFoundError("URL not found for analytics");
     }
 
-
-    analyticsLogger.info("getAnalyticsForUrlId", "Fetching raw hourly docs", { urlId });
+    analyticsLogger.info("getAnalyticsForUrlId", "Fetching raw hourly docs", {
+      urlId,
+    });
     const rawDocs =
       await this.analyticsRepository.findHourlyAggregatedAnalyticsByUrlId(
         urlId,
@@ -210,7 +229,11 @@ export class AnalyticsService {
         utcEndDate,
       );
 
-    analyticsLogger.info("getAnalyticsForUrlId", "Merging maps for OS, browser, etc.", { urlId, docsCount: rawDocs.length });
+    analyticsLogger.info(
+      "getAnalyticsForUrlId",
+      "Merging maps for OS, browser, etc.",
+      { urlId, docsCount: rawDocs.length },
+    );
     // Object.entries does not work on Mongoose maps
     const mergeMaps = (field: keyof IHourlyAggregatedAnalyticsModel) => {
       const result: Record<string, number> = {};
@@ -292,7 +315,11 @@ export class AnalyticsService {
       expiresAt: urlInfo.expirationDate,
     };
 
-    analyticsLogger.info("getAnalyticsForUrlId", "URL analytics compiled successfully", { urlId });
+    analyticsLogger.info(
+      "getAnalyticsForUrlId",
+      "URL analytics compiled successfully",
+      { urlId },
+    );
     return { urlId, analyticsNumbers, urlDesc, startDate, endDate };
   }
 }

@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
-import {  HourlyAggregatedAnalytics, RawAnalytics } from "../models/analytics.model";
+import {
+  HourlyAggregatedAnalytics,
+  RawAnalytics,
+} from "../models/analytics.model";
 import logger from "../config/logger.config";
 import { CreateRawAnalyticsDto } from "../dtos/analytics.dto";
+import Url, { UrlStatus } from "../models/url.model";
 
 export interface CreateRawAnalytics {
   urlId: string;
@@ -34,7 +38,7 @@ export class AnalyticsRepository {
   async findHourlyAggregatedAnalyticsByUrlId(
     urlId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ) {
     // const analytics = await HourlyAggregatedAnalytics.find({ urlId });
     const rawDocs = await HourlyAggregatedAnalytics.find({
@@ -204,7 +208,6 @@ export class AnalyticsRepository {
         rawResult: true,
       });
 
-
       const validationErrors = result?.mongoose?.validationErrors || [];
 
       if (validationErrors.length > 0) {
@@ -228,7 +231,7 @@ export class AnalyticsRepository {
       logger.error("Raw analytics batch creation failed", {
         event: "ANALYTICS_BATCH_CREATE_FAILED",
         batchSize: analytics.length,
-        err: error instanceof Error ? error : undefined
+        err: error instanceof Error ? error : undefined,
       });
 
       if (error?.code === 11000 || error?.writeErrors) {
@@ -249,5 +252,49 @@ export class AnalyticsRepository {
 
       throw error;
     }
+  }
+
+  async getUserDashboardAnalytics(userId: string) {
+    const userUrls = await Url.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          status: { $ne: UrlStatus.DELETED },
+        },
+      },
+      {
+        // Left join — URLs with zero clicks will still appear
+        $lookup: {
+          from: "hourlyaggregatedanalytics",
+          localField: "_id",
+          foreignField: "urlId",
+          as: "analytics",
+        },
+      },
+      {
+        // Sum clicks; defaults to 0 if analytics array is empty
+        $addFields: {
+          totalClicks: { $sum: "$analytics.clicks" },
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $project: {
+          _id: 0,
+          urlId: "$_id",
+          shortUrl: 1,
+          originalUrl: 1,
+          status: 1,
+          userId: 1,
+          createdAt: 1,
+          totalClicks: 1,
+          expirationDate: 1,
+        },
+      },
+    ]);
+
+    return userUrls;
   }
 }

@@ -21,7 +21,6 @@ export const appErrorHandler = (err: AppError, req: Request, res: Response, next
     res.status(err.statusCode).json({
         success: false,
         message: err.message,
-        correlationId // Include correlation ID in response for client tracking
     });
 }
 
@@ -44,6 +43,5 @@ export const genericErrorHandler = (err: Error, req: Request, res: Response, nex
     res.status(500).json({
         success: false,
         message: "Internal Server Error",
-        correlationId // Include correlation ID in response for client tracking
     });
 }

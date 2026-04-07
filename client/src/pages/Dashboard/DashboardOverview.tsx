@@ -168,7 +168,7 @@ export default function DashboardOverview() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalClicksAcrossLinks.toLocaleString()}
+              {totalClicksAcrossLinks}
             </div>
             <p className="text-xs text-muted-foreground">
               Across all shortened URLs
@@ -446,7 +446,7 @@ export default function DashboardOverview() {
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
                         <span className="font-bold">
-                          {link.clicks.toLocaleString()}
+                          {link.clicks}
                         </span>
                         <span className="text-[10px] text-muted-foreground uppercase">
                           Clicks

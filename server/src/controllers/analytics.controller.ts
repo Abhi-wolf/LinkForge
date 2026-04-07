@@ -50,7 +50,8 @@ export const analyticsController = {
   getDashboardAnalytics: loggedInUserProcedure.query(async ({ ctx }) => {
     try {
       analyticsLogger.info("getDashboardAnalytics", "Fetching dashboard analytics", { userId: ctx.user!.userId });
-      const result = await analyticsService.getUserAnalytics(ctx.user!.userId);
+      const result = await analyticsService.getUserDashboardAnalytics(ctx.user!.userId);
+
       analyticsLogger.info("getDashboardAnalytics", "Dashboard analytics fetched successfully", {
         userId: ctx.user!.userId
       });
