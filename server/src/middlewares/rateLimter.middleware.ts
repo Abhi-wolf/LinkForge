@@ -64,5 +64,18 @@ export const normalRateLimiter = createRateLimitMiddleware({
 });
 export const relaxedRateLimiter = createRateLimitMiddleware({
   windowMs: 60000,
-  limit: 100,
+  limit: 70,
+});
+
+export const redirectRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next) => {
+    rateLimitExceededTotal.inc({ ip: req.ip });
+    res
+      .status(429)
+      .json({ message: "Too many requests, please try again later." });
+  },
 });

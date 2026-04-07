@@ -11,6 +11,7 @@ import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import prometheusClient from "../config/prometheus";
+import { redirectRateLimiter } from "../middlewares/rateLimter.middleware";
 
 export function setupRoutes(app: Application): void {
   // tRPC routes
@@ -46,5 +47,5 @@ export function setupRoutes(app: Application): void {
   });
 
   // URL redirect route
-  app.get("/fwd/:shortUrl", redirectUrl);
+  app.get("/fwd/:shortUrl", redirectRateLimiter, redirectUrl);
 }

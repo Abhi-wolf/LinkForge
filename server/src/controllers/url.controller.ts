@@ -207,8 +207,14 @@ export async function redirectUrl(req: Request, res: Response) {
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
 
+  // let ip =
+  //   (req.headers["x-forwarded-for"] as string) ||
+  //   req.socket.remoteAddress ||
+  //   req.ip ||
+  //   "";
+
   let ip =
-    (req.headers["x-forwarded-for"] as string) ||
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
     req.socket.remoteAddress ||
     req.ip ||
     "";

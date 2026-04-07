@@ -13,6 +13,7 @@ import {
 } from "../utils/errors/app.error";
 import { createContextLogger } from "../config/logger.config";
 import { urlCreatedTotal } from "../metrics/url.metrics";
+import { CounterRepository } from "../repositories/counter.repository";
 
 const urlLogger = createContextLogger("url", "service");
 
@@ -21,6 +22,7 @@ export class UrlService {
     private readonly urlRepository: UrlRepository,
     private readonly cacheRepository: CacheRepository,
     private readonly analyticsRepository: AnalyticsRepository,
+    private readonly counterRepository: CounterRepository,
   ) {}
 
   /**
@@ -30,14 +32,20 @@ export class UrlService {
    * @returns Promise<IUrl> - Created URL
    */
   async createShortUrl(urlData: CreateUrlDto, userId?: string) {
-    urlLogger.info("createShortUrl", "Starting short URL creation", { originalUrl: urlData.originalUrl, userId });
-    
+    urlLogger.info("createShortUrl", "Starting short URL creation", {
+      originalUrl: urlData.originalUrl,
+      userId,
+    });
+
     let shortUrl: string;
     let url;
 
     // unauthorized user can only create url with 7 days expiration date
     if (!userId) {
-      urlLogger.info("createShortUrl", "Unauthorized user: setting 7-day expiration");
+      urlLogger.info(
+        "createShortUrl",
+        "Unauthorized user: setting 7-day expiration",
+      );
       urlData.expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
@@ -45,11 +53,18 @@ export class UrlService {
     let attempts = 0;
 
     while (attempts < MAX_ATTEMPTS) {
-      urlLogger.info("createShortUrl", "Generating short URL attempt", { attempt: attempts + 1 });
-      const nextId = await this.cacheRepository.getNextId();
+      urlLogger.info("createShortUrl", "Generating short URL attempt", {
+        attempt: attempts + 1,
+      });
+      // const nextId = await this.cacheRepository.getNextId();
+      const nextId = await this.counterRepository.getNextIdFromDB();
+
+      urlLogger.info("createShortUrl", "Retrieved next ID from DB", { nextId });
 
       shortUrl = toBase62(nextId);
-      urlLogger.info("createShortUrl", "Generated short URL candidate", { shortUrl });
+      urlLogger.info("createShortUrl", "Generated short URL candidate", {
+        shortUrl,
+      });
 
       // Check if the generated short URL already exists (unlikely but possible)
       const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
@@ -74,14 +89,20 @@ export class UrlService {
     }
 
     if (attempts >= MAX_ATTEMPTS) {
-      urlLogger.error("createShortUrl", "Max attempts reached during unique URL generation", { attempts });
+      urlLogger.error(
+        "createShortUrl",
+        "Max attempts reached during unique URL generation",
+        { attempts },
+      );
       throw new InternalServerError(
         "Failed to generate unique short URL after multiple attempts",
       );
     }
 
-    urlLogger.info("createShortUrl", "Updating cache with new URL mapping", { shortUrl: url!.shortUrl });
-    
+    urlLogger.info("createShortUrl", "Updating cache with new URL mapping", {
+      shortUrl: url!.shortUrl,
+    });
+
     await this.cacheRepository.setUrlMapping({
       shortUrl: url!.shortUrl,
       originalUrl: url!.originalUrl,
@@ -125,7 +146,10 @@ export class UrlService {
     if (cacheData) {
       urlLogger.info("getOriginalUrl", "Cache hit", { shortUrl });
       if (cacheData.status && cacheData.status !== UrlStatus.ACTIVE) {
-        urlLogger.warn("getOriginalUrl", "URL is not active", { shortUrl, status: cacheData.status });
+        urlLogger.warn("getOriginalUrl", "URL is not active", {
+          shortUrl,
+          status: cacheData.status,
+        });
         throw new NotFoundError("Url not found");
       }
 
@@ -133,7 +157,10 @@ export class UrlService {
         cacheData.expirationDate &&
         new Date(cacheData.expirationDate) < new Date()
       ) {
-        urlLogger.warn("getOriginalUrl", "URL has expired", { shortUrl, expirationDate: cacheData.expirationDate });
+        urlLogger.warn("getOriginalUrl", "URL has expired", {
+          shortUrl,
+          expirationDate: cacheData.expirationDate,
+        });
         throw new NotFoundError("Url not found");
       }
 
@@ -146,7 +173,9 @@ export class UrlService {
       };
     }
 
-    urlLogger.info("getOriginalUrl", "Cache miss, fetching from DB", { shortUrl });
+    urlLogger.info("getOriginalUrl", "Cache miss, fetching from DB", {
+      shortUrl,
+    });
     const url = await this.urlRepository.findByShortUrl(shortUrl);
 
     if (!url) {
@@ -155,16 +184,24 @@ export class UrlService {
     }
 
     if (url.expirationDate && new Date(url.expirationDate) < new Date()) {
-      urlLogger.warn("getOriginalUrl", "URL has expired in DB", { shortUrl, expirationDate: url.expirationDate });
+      urlLogger.warn("getOriginalUrl", "URL has expired in DB", {
+        shortUrl,
+        expirationDate: url.expirationDate,
+      });
       throw new NotFoundError("Url not found");
     }
 
     if (url.status !== UrlStatus.ACTIVE) {
-      urlLogger.warn("getOriginalUrl", "URL is not active in DB", { shortUrl, status: url.status });
+      urlLogger.warn("getOriginalUrl", "URL is not active in DB", {
+        shortUrl,
+        status: url.status,
+      });
       throw new NotFoundError("Url not found");
     }
 
-    urlLogger.info("getOriginalUrl", "Updating cache after DB fetch", { shortUrl });
+    urlLogger.info("getOriginalUrl", "Updating cache after DB fetch", {
+      shortUrl,
+    });
     await this.cacheRepository.setUrlMapping({
       shortUrl: url.shortUrl,
       originalUrl: url.originalUrl,
@@ -199,13 +236,20 @@ export class UrlService {
       offset?: number;
     },
   ) {
-    urlLogger.info("getAllUrlsOfUser", "Fetching all URLs for user", { userId, ...options });
+    urlLogger.info("getAllUrlsOfUser", "Fetching all URLs for user", {
+      userId,
+      ...options,
+    });
     const [urls, total] = await Promise.all([
       this.urlRepository.getUrlsOfUser(userId, options),
       this.urlRepository.countUrlsOfUser(userId, options),
     ]);
 
-    urlLogger.info("getAllUrlsOfUser", "URLs fetched successfully", { userId, count: urls.length, total });
+    urlLogger.info("getAllUrlsOfUser", "URLs fetched successfully", {
+      userId,
+      count: urls.length,
+      total,
+    });
 
     const baseUrl = serverConfig.BASE_URL;
 
@@ -240,7 +284,11 @@ export class UrlService {
    * @throws BadRequestError - If short URL is expired or expiration date is in the past
    */
   async updateUrl(id: string, data: Partial<IUrl>, userId: string) {
-    urlLogger.info("updateUrl", "Updating URL", { id, userId, updateData: data });
+    urlLogger.info("updateUrl", "Updating URL", {
+      id,
+      userId,
+      updateData: data,
+    });
     if (data.shortUrl) {
       urlLogger.warn("updateUrl", "Short URL update attempted", { id });
       throw new ForbiddenError("Short URL cannot be updated");
@@ -254,7 +302,11 @@ export class UrlService {
     }
 
     if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
-      urlLogger.warn("updateUrl", "Permission denied", { id, userId, ownerId: existingUrl.userId });
+      urlLogger.warn("updateUrl", "Permission denied", {
+        id,
+        userId,
+        ownerId: existingUrl.userId,
+      });
       throw new ForbiddenError("You do not have permission to update this URL");
     }
 
@@ -269,7 +321,10 @@ export class UrlService {
     }
 
     if (data.expirationDate && new Date(data.expirationDate) < new Date()) {
-      urlLogger.warn("updateUrl", "Invalid expiration date", { id, expirationDate: data.expirationDate });
+      urlLogger.warn("updateUrl", "Invalid expiration date", {
+        id,
+        expirationDate: data.expirationDate,
+      });
       throw new BadRequestError("Expiration date cannot be in the past");
     }
 
@@ -277,16 +332,24 @@ export class UrlService {
     const updatedUrl = await this.urlRepository.updateUrl(id, data);
 
     if (!updatedUrl) {
-      urlLogger.error("updateUrl", "Update failed to return updated document", { id });
+      urlLogger.error("updateUrl", "Update failed to return updated document", {
+        id,
+      });
       throw new NotFoundError("Url not found");
     }
 
     // if status changed to inactive then remove that from cache
     if (updatedUrl.status !== UrlStatus.ACTIVE) {
-      urlLogger.info("updateUrl", "Status changed to non-active, deleting cache", { id, status: updatedUrl.status });
+      urlLogger.info(
+        "updateUrl",
+        "Status changed to non-active, deleting cache",
+        { id, status: updatedUrl.status },
+      );
       await this.cacheRepository.deleteUrlMapping(updatedUrl.shortUrl);
     } else if (data.originalUrl) {
-      urlLogger.info("updateUrl", "Updating cache with new original URL", { id });
+      urlLogger.info("updateUrl", "Updating cache with new original URL", {
+        id,
+      });
       await this.cacheRepository.setUrlMapping({
         shortUrl: updatedUrl.shortUrl,
         originalUrl: updatedUrl.originalUrl,
@@ -327,15 +390,25 @@ export class UrlService {
     }
 
     if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
-      urlLogger.warn("deleteUrl", "Permission denied", { id, userId, ownerId: existingUrl.userId });
+      urlLogger.warn("deleteUrl", "Permission denied", {
+        id,
+        userId,
+        ownerId: existingUrl.userId,
+      });
       throw new ForbiddenError("You do not have permission to delete this URL");
     }
 
-    urlLogger.info("deleteUrl", "Deleting analytics and updating status to DELETED", { id });
+    urlLogger.info(
+      "deleteUrl",
+      "Deleting analytics and updating status to DELETED",
+      { id },
+    );
     await this.analyticsRepository.deleteAnalyticsByUrlId(id);
     await this.urlRepository.updateUrl(id, { status: UrlStatus.DELETED });
-    
-    urlLogger.info("deleteUrl", "Deleting cache mapping", { shortUrl: existingUrl.shortUrl });
+
+    urlLogger.info("deleteUrl", "Deleting cache mapping", {
+      shortUrl: existingUrl.shortUrl,
+    });
     await this.cacheRepository.deleteUrlMapping(existingUrl.shortUrl);
 
     urlLogger.info("deleteUrl", "URL deleted successfully", { id });
@@ -351,7 +424,10 @@ export class UrlService {
    * @throws ForbiddenError - If user does not have permission to access URL
    */
   async getUrlBelongsToUser(shortUrl: string, userId: string) {
-    urlLogger.info("getUrlBelongsToUser", "Verifying URL ownership", { shortUrl, userId });
+    urlLogger.info("getUrlBelongsToUser", "Verifying URL ownership", {
+      shortUrl,
+      userId,
+    });
     const existingUrl = await this.urlRepository.findByShortUrl(shortUrl);
 
     if (!existingUrl) {
@@ -360,7 +436,11 @@ export class UrlService {
     }
 
     if (!existingUrl.userId || existingUrl.userId.toString() !== userId) {
-      urlLogger.warn("getUrlBelongsToUser", "Permission denied", { shortUrl, userId, ownerId: existingUrl.userId });
+      urlLogger.warn("getUrlBelongsToUser", "Permission denied", {
+        shortUrl,
+        userId,
+        ownerId: existingUrl.userId,
+      });
       throw new ForbiddenError("You do not have permission to access this URL");
     }
 
@@ -379,12 +459,14 @@ export class UrlService {
     const expiredUrls = await this.urlRepository.findExpiredUrls();
 
     if (expiredUrls?.length > 0) {
-      urlLogger.info("runUrlExpiryJob", "Expired URLs found", { count: expiredUrls.length });
+      urlLogger.info("runUrlExpiryJob", "Expired URLs found", {
+        count: expiredUrls.length,
+      });
       await this.urlRepository.updateExpireStatus();
 
       urlLogger.info("runUrlExpiryJob", "URL expiry status updated in DB", {
         event: "URL_EXPIRY_JOB_SUCCESS",
-        expiredCount: expiredUrls.length
+        expiredCount: expiredUrls.length,
       });
 
       // Clear cache for each expired URL
@@ -395,10 +477,14 @@ export class UrlService {
         ),
       );
 
-      urlLogger.info("runUrlExpiryJob", "Expired URLs processed and cache cleared", {
-        event: "URL_EXPIRY_CACHE_CLEAR_SUCCESS",
-        expiredCount: expiredUrls.length
-      });
+      urlLogger.info(
+        "runUrlExpiryJob",
+        "Expired URLs processed and cache cleared",
+        {
+          event: "URL_EXPIRY_CACHE_CLEAR_SUCCESS",
+          expiredCount: expiredUrls.length,
+        },
+      );
     } else {
       urlLogger.info("runUrlExpiryJob", "No expired URLs found to process");
     }
